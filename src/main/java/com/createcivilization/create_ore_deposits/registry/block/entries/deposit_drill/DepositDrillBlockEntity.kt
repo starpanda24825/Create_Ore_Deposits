@@ -1,6 +1,7 @@
 package com.createcivilization.create_ore_deposits.registry.block.entries.deposit_drill
 
 import com.createcivilization.create_ore_deposits.config.Config
+import com.createcivilization.create_ore_deposits.registry.datamap.CreateOreDepositsDataMaps.COOLING_FACTOR_DATA
 import com.createcivilization.create_ore_deposits.registry.datamap.CreateOreDepositsDataMaps.DEPOSIT_DATA
 import com.createcivilization.create_ore_deposits.registry.datamap.CreateOreDepositsDataMaps.LUBRICANT_FACTOR_DATA
 import com.createcivilization.create_ore_deposits.registry.fluid.CreateOreDepositsFluids
@@ -26,6 +27,7 @@ import net.minecraft.nbt.NbtUtils
 import net.minecraft.nbt.Tag
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.util.Mth
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -55,10 +57,15 @@ class DepositDrillBlockEntity(
 	private var lerpedOffset: LerpedFloat = LerpedFloat.linear().startWithValue(MIN_LERP)
 	private var lastBlock: Block? = null
 	private var temperature: Float = Config.SERVER.DEPOSIT_DRILL.baseTemperature
+	// Lerped copy of temperature, used for the goggles heat readout so it doesn't jitter.
+	private var displayTemperature: Float = Config.SERVER.DEPOSIT_DRILL.baseTemperature
+	// Hardness snapshot taken once at tick start (fixes heat jitter, see tick()).
+	private var lastHardness: Float = 1f
 	private var maxAttempts: Int = 0
 	private var remainingAttempts: Int = 0
 	private var drillTickCounter: Int = 0
 	private var currentDepositPos: BlockPos? = null
+	private var isActuallyMiningSnapshot: Boolean = false
 
 	private var depositQueue: ArrayDeque<BlockPos> = ArrayDeque()
 	private val depositQueueSet: MutableSet<BlockPos> = HashSet(256)
@@ -97,7 +104,20 @@ class DepositDrillBlockEntity(
 			setLerpedOffset(drillOffset)
 		} else setLerpedOffset(drillOffset.roundToInt())
 
-		updateTemperature()
+		// FIXME (heat jitter): snapshot the target state once per tick — getTargetBlockState()
+		// flips between currentDepositPos and drillTipPos during queue rebuilds, which made
+		// hardness flicker and the temperature readout jump. Hardness and mining are passed in.
+		val snapTargetState: BlockState? = getTargetBlockState()
+		val snapIsDeposit: Boolean = isDeposit(snapTargetState)
+		val snapHardness: Float = getBlockHardness(snapTargetState)
+		lastHardness = snapHardness
+		val snapCanMineBasic: Boolean =
+			snapIsDeposit && speed != 0f && !drillTipHandler.getStackInSlot(0).isEmpty
+		isActuallyMiningSnapshot = snapCanMineBasic
+
+		updateTemperature(snapIsDeposit && snapCanMineBasic, snapHardness)
+		displayTemperature = Mth.lerp(0.08f, displayTemperature, temperature)
+
 		onBreakTick()
 		damageTip()
 	}
@@ -106,10 +126,11 @@ class DepositDrillBlockEntity(
 		super.lazyTick()
 		setChanged()
 		sendData()
-		if (getMovementSpeed() != 0f) {
-			lubricantHandler.drain(1, FluidAction.EXECUTE)
-			coolantHandler.drain(1, FluidAction.EXECUTE)
-		}
+		// Only drain fluids while actually mining a deposit — previously drained on any speed,
+		// even when idle/jammed/fluid-starved.
+		if (!isActuallyMiningSnapshot) return
+		lubricantHandler.drain(1, FluidAction.EXECUTE)
+		coolantHandler.drain(1, FluidAction.EXECUTE)
 	}
 
 	override fun canBreak(stateToBreak: BlockState, blockHardness: Float): Boolean {
@@ -177,7 +198,7 @@ class DepositDrillBlockEntity(
 		return hasOutputSpace()
 	}
 
-	private fun hasOutputSpace(): Boolean {
+	fun hasOutputSpace(): Boolean {
 		for (slot in 0 until itemHandler.slots) {
 			val stack = itemHandler.getStackInSlot(slot)
 			if (stack.isEmpty || stack.count < itemHandler.getSlotLimit(slot)) {
@@ -187,6 +208,12 @@ class DepositDrillBlockEntity(
 		return false
 	}
 
+	fun hasFluids(): Boolean =
+		!lubricantHandler.getFluidInTank(0).isEmpty && !coolantHandler.getFluidInTank(0).isEmpty
+
+	// Used by DepositDrillBlock.onRemove to spill the 9 output slots.
+	fun getOutputInventory(): IItemHandler = itemHandler
+
 	private fun insertOutput(stack: ItemStack) {
 		var remaining = stack.copy()
 		for (slot in 0 until itemHandler.slots) {
@@ -195,7 +222,7 @@ class DepositDrillBlockEntity(
 		}
 	}
 
-	fun calculateExtractionInterval(): Int = 1025 - (speed * 4).roundToInt()
+	fun calculateExtractionInterval(): Int = (1025 - (speed * 4).roundToInt()).coerceIn(12, 600)
 
 	fun getSimulatedDrops(state: BlockState, serverLevel: ServerLevel, pos: BlockPos): List<ItemStack> {
 		return Block.getDrops(state, serverLevel, pos, null, null, ItemStack.EMPTY)
@@ -223,15 +250,13 @@ class DepositDrillBlockEntity(
 		level?.destroyBlockProgress(blockPos.hashCode(), targetPos, stage)
 	}
 
-	// FIXME: Issue where temps are jumping around in the tooltip.
-	fun updateTemperature() {
+	// FIXME: temps jumping around in the tooltip was caused by the hardness flicker between
+	// currentDepositPos and drillTipPos — hardness is now snapshotted in tick() and passed in.
+	fun updateTemperature(isMining: Boolean, hardness: Float) {
 		val baseCooling: Float = Config.SERVER.DEPOSIT_DRILL.baseCooling
 		val baseTemperature: Float = Config.SERVER.DEPOSIT_DRILL.baseTemperature
 
-		val targetState: BlockState? = getTargetBlockState()
-		val isMining: Boolean = targetState != null && isDeposit(targetState) && canMine() && speed > 0
-
-		val heatGen: Float = if (isMining) speed * getBlockHardness(targetState) else 0.0f
+		val heatGen: Float = if (isMining) speed * hardness else 0.0f
 
 		val dissipation: Float = (baseCooling + getLubricantFactor() + getCoolingFactor()).coerceAtLeast(0.1f)
 		val equilibriumTemp: Float = baseTemperature + (heatGen / dissipation)
@@ -254,8 +279,10 @@ class DepositDrillBlockEntity(
 		}
 
 		if (damage < 1) return
-
+		// tick() runs on both sides — this previously crashed the client by casting to ServerLevel.
+		if (level?.isClientSide == true) return
 		val world: ServerLevel = level as? ServerLevel ?: return
+
 		itemStack.hurtAndBreak(damage, world, null) {
 			drillTipHandler.setStackInSlot(0, ItemStack.EMPTY)
 			notifyUpdate()
@@ -273,17 +300,19 @@ class DepositDrillBlockEntity(
 	}
 
 	fun getLubricantFactor(): Float {
-		return lubricantHandler.getFluidInTank(1)
+		// FIXED: was reading tank index 1 on a 1-tank handler, always returning 0.
+		return lubricantHandler.getFluidInTank(0)
 			.fluidHolder
 			.getData(LUBRICANT_FACTOR_DATA)
 			?.lubeFactor ?: 0.0f
 	}
 
 	fun getCoolingFactor(): Float {
+		// FIXED: was reading LUBRICANT_FACTOR_DATA (lubeFactor) instead of COOLING_FACTOR_DATA.
 		return coolantHandler.getFluidInTank(0)
 			.fluidHolder
-			.getData(LUBRICANT_FACTOR_DATA)
-			?.lubeFactor ?: 0.0f
+			.getData(COOLING_FACTOR_DATA)
+			?.coolingFactor ?: 0.0f
 	}
 
 	private fun isDeposit(state: BlockState?): Boolean = state?.`is`(CreateOreDepositsTags.DEPOSIT) ?: false
@@ -372,10 +401,12 @@ class DepositDrillBlockEntity(
 	private fun readDepositQueue(nbt: CompoundTag) {
 		depositQueue.clear()
 		depositQueueSet.clear()
+		// Symmetric with writeDepositQueue: list of compounds each holding a "pos" IntArrayTag.
+		// Previously read raw "X"/"Y"/"Z" ints off the (now IntArray) tags, corrupting the queue.
 		val positions = nbt.getList("DepositQueue", Tag.TAG_COMPOUND.toInt())
 		for (index in 0 until positions.size) {
-			val pos = positions.getCompound(index)
-			val blockPos = BlockPos(pos.getInt("X"), pos.getInt("Y"), pos.getInt("Z"))
+			val posTag = positions.getCompound(index)
+			val blockPos = NbtUtils.readBlockPos(posTag, "pos").orElse(null) ?: continue
 			depositQueue.addLast(blockPos)
 			depositQueueSet.add(blockPos)
 		}
@@ -384,7 +415,9 @@ class DepositDrillBlockEntity(
 	private fun writeDepositQueue(nbt: CompoundTag) {
 		val positions = ListTag()
 		depositQueue.forEach { pos ->
-			positions.add(NbtUtils.writeBlockPos(pos))
+			val entry = CompoundTag()
+			entry.put("pos", NbtUtils.writeBlockPos(pos))
+			positions.add(entry)
 		}
 		nbt.put("DepositQueue", positions)
 	}
@@ -410,6 +443,7 @@ class DepositDrillBlockEntity(
 		drillTickCounter = nbt.getInt("DrillTickCount")
 		drillOffset = nbt.getFloat("DrillOffset")
 		temperature = nbt.getFloat("Temperature")
+		displayTemperature = nbt.getFloat("DisplayTemperature")
 
 		if (nbt.contains("LastBlock")) {
 			lastBlock = BuiltInRegistries.BLOCK.get(NBTHelper.readResourceLocation(nbt, "LastBlock"))
@@ -435,6 +469,7 @@ class DepositDrillBlockEntity(
 		nbt.putInt("DrillTickCount", drillTickCounter)
 		nbt.putFloat("DrillOffset", drillOffset)
 		nbt.putFloat("Temperature", temperature)
+		nbt.putFloat("DisplayTemperature", displayTemperature)
 
 		lastBlock?.let {
 			NBTHelper.writeResourceLocation(nbt, "LastBlock", BuiltInRegistries.BLOCK.getKey(it))
@@ -513,7 +548,7 @@ class DepositDrillBlockEntity(
 		}
 
 		// Heat
-		translate("tooltip.drill.heat", temperature.toInt())
+		translate("tooltip.drill.heat", displayTemperature.toInt())
 			.style(ChatFormatting.RED)
 			.forGoggles(tooltip)
 

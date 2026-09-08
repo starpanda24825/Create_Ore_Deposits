@@ -26,7 +26,20 @@ class FluidHandler(
 	@Suppress("NOTHING_TO_INLINE")
 	inline fun isAllowed(fluidStack: FluidStack): Boolean = this.isAllowed(fluidStack.fluid)
 
-	fun isAllowed(fluid: Fluid?): Boolean = allowedFluids == null || allowedFluids!!.contains(fluid)
+	fun isAllowed(fluid: Fluid?): Boolean {
+		if (fluid == null) return false
+		val allowed = allowedFluids ?: return true
+		if (allowed.contains(fluid)) return true
+		// Fall back to tags: accept any fluid that shares a common tag with an allowed one
+		// (e.g. modded water tagged #minecraft:water works in the coolant tank).
+		return allowed.any { allowedFluid ->
+			allowedFluid.builtInRegistryHolder().tags().anyMatch { tag -> fluid.builtInRegistryHolder().`is`(tag) }
+		}
+	}
+
+	fun getFluidAmount(): Int = tank.fluid.amount
+
+	fun getCapacity(): Int = tank.capacity
 
 	override fun getTanks(): Int = 1
 

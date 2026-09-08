@@ -14,6 +14,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.BlockGetter
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.LevelReader
+import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.RenderShape
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
@@ -39,6 +40,28 @@ class DepositDrillBlock(properties: Properties) : HorizontalKineticBlock(propert
 
 	override fun getRotationAxis(state: BlockState): Direction.Axis =
 		state.getValue(HORIZONTAL_FACING).clockWise.axis
+
+	override fun onRemove(state: BlockState, level: Level, pos: BlockPos, newState: BlockState, movedByPiston: Boolean) {
+		if (!state.`is`(newState.block)) {
+			val be = level.getBlockEntity(pos) as? DepositDrillBlockEntity
+			if (be != null) {
+				// Clear the crack progress painted on the target deposit, spill inventory + tip.
+				be.clearDestroyProgress()
+				val outputHandler: IItemHandler = be.getOutputInventory()
+				for (slot in 0 until outputHandler.slots) {
+					val extracted = outputHandler.extractItem(slot, Int.MAX_VALUE, false)
+					if (!extracted.isEmpty) {
+						Block.popResource(level, pos, extracted)
+					}
+				}
+				val tip = be.getDrillTipItemHandler().getStackInSlot(0)
+				if (!tip.isEmpty) {
+					Block.popResource(level, pos, tip)
+				}
+			}
+		}
+		super.onRemove(state, level, pos, newState, movedByPiston)
+	}
 
 	override fun onBlockEntityUse(
 		world: BlockGetter,
