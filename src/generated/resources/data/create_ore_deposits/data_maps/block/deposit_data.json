@@ -1,44 +1,48 @@
 {
   "values": {
     "create_ore_deposits:coal_ore_deposit": {
-      "hardness": 1.0,
-      "max_attempts": 1000
+      "hardness": 1.2,
+      "max_attempts": 120
     },
     "create_ore_deposits:copper_ore_deposit": {
-      "hardness": 1.0,
-      "max_attempts": 800
+      "hardness": 1.4,
+      "max_attempts": 140
     },
     "create_ore_deposits:diamond_ore_deposit": {
-      "hardness": 5.0,
-      "max_attempts": 50
+      "hardness": 3.4,
+      "max_attempts": 80,
+      "required_tier": 3
     },
     "create_ore_deposits:emerald_ore_deposit": {
       "hardness": 3.0,
-      "max_attempts": 30
+      "max_attempts": 60,
+      "required_tier": 3
     },
     "create_ore_deposits:example_deposit": {
       "hardness": 1.0,
-      "max_attempts": 10
+      "max_attempts": 20
     },
     "create_ore_deposits:gold_ore_deposit": {
-      "hardness": 3.0,
-      "max_attempts": 300
+      "hardness": 2.6,
+      "max_attempts": 160,
+      "required_tier": 2
     },
     "create_ore_deposits:iron_ore_deposit": {
-      "hardness": 2.0,
-      "max_attempts": 700
+      "hardness": 1.8,
+      "max_attempts": 180
     },
     "create_ore_deposits:lapis_ore_deposit": {
-      "hardness": 2.0,
-      "max_attempts": 400
+      "hardness": 1.6,
+      "max_attempts": 100
     },
     "create_ore_deposits:netherite_ore_deposit": {
-      "hardness": 7.0,
-      "max_attempts": 40
+      "hardness": 5.0,
+      "max_attempts": 70,
+      "required_tier": 4
     },
     "create_ore_deposits:quartz_ore_deposit": {
-      "hardness": 2.0,
-      "max_attempts": 400
+      "hardness": 1.5,
+      "max_attempts": 110
     }
   }
 }

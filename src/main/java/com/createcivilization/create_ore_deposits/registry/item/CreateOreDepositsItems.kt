@@ -15,6 +15,7 @@ object CreateOreDepositsItems {
 	val DIAMOND_DRILL_TIP: ItemEntry<Item> = REGISTRATE.item("diamond_drill_tip", ::Item)
 		.properties { it.durability(20000).stacksTo(1).setNoRepair() }
 		.tag(CreateOreDepositsTags.DRILL_TIP)
+		.tag(CreateOreDepositsTags.DIAMOND_TIP_TIER)
 		.defaultModel()
 		.register()
 
@@ -23,6 +24,7 @@ object CreateOreDepositsItems {
 	val GOLD_DRILL_TIP: ItemEntry<Item> = REGISTRATE.item("gold_drill_tip", ::Item)
 		.properties { it.durability(8000).stacksTo(1).setNoRepair() }
 		.tag(CreateOreDepositsTags.DRILL_TIP)
+		.tag(CreateOreDepositsTags.GOLD_TIP_TIER)
 		.defaultModel()
 		.register()
 
@@ -31,6 +33,7 @@ object CreateOreDepositsItems {
 	val STEEL_DRILL_TIP: ItemEntry<Item> = REGISTRATE.item("steel_drill_tip", ::Item)
 		.properties { it.durability(15000).stacksTo(1).setNoRepair() }
 		.tag(CreateOreDepositsTags.DRILL_TIP)
+		.tag(CreateOreDepositsTags.STEEL_TIP_TIER)
 		.defaultModel()
 		.register()
 
@@ -39,6 +42,7 @@ object CreateOreDepositsItems {
 	val IRON_DRILL_TIP: ItemEntry<Item> = REGISTRATE.item("iron_drill_tip", ::Item)
 		.properties { it.durability(5000).stacksTo(1).setNoRepair() }
 		.tag(CreateOreDepositsTags.DRILL_TIP)
+		.tag(CreateOreDepositsTags.IRON_TIP_TIER)
 		.defaultModel()
 		.register()
 

@@ -20,14 +20,122 @@ data object Config {
 		}
 		class DepositDrill(builder: ModConfigSpec.Builder) {
 
+// Heat & cooling
 			@PublishedApi
-			internal val _baseCooling: ModConfigSpec.DoubleValue = builder.defineInRange("baseCooling", 0.001, 0.0, Double.MAX_VALUE)
+			internal val _baseCooling: ModConfigSpec.DoubleValue = builder.defineInRange("baseCooling", 0.05, 0.0, 10.0)
 			inline val baseCooling: Float get() = _baseCooling.get().toFloat()
 
 			@PublishedApi
 			internal val _baseTemperature: ModConfigSpec.DoubleValue =
-				builder.defineInRange("baseTemperature", 293.0, -Double.MAX_VALUE, Double.MAX_VALUE)
+				builder.defineInRange("baseTemperature", 293.0, -1000.0, 5000.0)
 			inline val baseTemperature: Float get() = _baseTemperature.get().toFloat()
+
+// Extraction pacing (ticks per simulated loot roll)
+			@PublishedApi
+			internal val _baseExtractionInterval: ModConfigSpec.IntValue = builder
+				.comment("Base ticks per extraction attempt. Tune down to ~220-260 for the ~20 ores/min target @128 RPM with fluids.")
+				.defineInRange("baseExtractionInterval", 320, 1, 5000)
+			inline val baseExtractionInterval: Int get() = _baseExtractionInterval.get()
+
+			@PublishedApi
+			internal val _speedFactor: ModConfigSpec.DoubleValue = builder
+				.defineInRange("speedFactor", 0.95, 0.0, 10.0)
+			inline val speedFactor: Float get() = _speedFactor.get().toFloat()
+
+			@PublishedApi
+			internal val _hardnessTickPenalty: ModConfigSpec.IntValue = builder
+				.defineInRange("hardnessTickPenalty", 28, 0, 500)
+			inline val hardnessTickPenalty: Int get() = _hardnessTickPenalty.get()
+
+			@PublishedApi
+			internal val _lubeTickBonus: ModConfigSpec.DoubleValue = builder
+				.defineInRange("lubeTickBonus", 0.35, 0.0, 5.0)
+			inline val lubeTickBonus: Float get() = _lubeTickBonus.get().toFloat()
+
+			@PublishedApi
+			internal val _minInterval: ModConfigSpec.IntValue = builder
+				.defineInRange("minInterval", 12, 1, 1000)
+			inline val minInterval: Int get() = _minInterval.get()
+
+			@PublishedApi
+			internal val _maxInterval: ModConfigSpec.IntValue = builder
+				.defineInRange("maxInterval", 600, 1, 10000)
+			inline val maxInterval: Int get() = _maxInterval.get()
+
+// Fluid consumption (Answer 4: fluids are mandatory, these are consumed while actively mining)
+			@PublishedApi
+			internal val _lubeDrainPerLazy: ModConfigSpec.IntValue = builder
+				.comment("Lubricant drained per lazy tick while mining (lazy tick = every 10 ticks). Speed adds +speed/128.")
+				.defineInRange("lubeDrainPerLazyTick", 1, 0, 100)
+			inline val lubeDrainPerLazy: Int get() = _lubeDrainPerLazy.get()
+
+			@PublishedApi
+			internal val _coolantDrainPerLazy: ModConfigSpec.IntValue = builder
+				.comment("Coolant drained per lazy tick while mining (lazy tick = every 10 ticks). Speed adds +speed/128.")
+				.defineInRange("coolantDrainPerLazyTick", 1, 0, 100)
+			inline val coolantDrainPerLazy: Int get() = _coolantDrainPerLazy.get()
+
+// Answer 3 hook: finite veins now, regeneration left for the future
+			@PublishedApi
+			internal val _enableRegeneration: ModConfigSpec.BooleanValue = builder
+				.comment("Reserved: future regrowth hook. Veins are finite for the ship release; keep false.")
+				.define("enableRegeneration", false)
+			inline val enableRegeneration: Boolean get() = _enableRegeneration.get()
+
+			@PublishedApi
+			internal val _regenerationTicks: ModConfigSpec.IntValue = builder
+				.defineInRange("regenerationTicks", 72000, 1, Int.MAX_VALUE)
+			inline val regenerationTicks: Int get() = _regenerationTicks.get()
+
+// Answer 2B: overheat / critical hysteresis
+			@PublishedApi
+			internal val _overheatThreshold: ModConfigSpec.DoubleValue = builder
+				.defineInRange("overheatThreshold", 600.0, 0.0, 5000.0)
+			inline val overheatThreshold: Float get() = _overheatThreshold.get().toFloat()
+
+			@PublishedApi
+			internal val _criticalThreshold: ModConfigSpec.DoubleValue = builder
+				.defineInRange("criticalThreshold", 900.0, 0.0, 5000.0)
+			inline val criticalThreshold: Float get() = _criticalThreshold.get().toFloat()
+
+			@PublishedApi
+			internal val _criticalHysteresis: ModConfigSpec.DoubleValue = builder
+				.defineInRange("criticalHysteresis", 700.0, 0.0, 5000.0)
+			inline val criticalHysteresis: Float get() = _criticalHysteresis.get().toFloat()
+
+// Stress
+			@PublishedApi
+			internal val _baseImpact: ModConfigSpec.DoubleValue = builder
+				.defineInRange("baseImpact", 48.0, 0.0, 10000.0)
+			inline val baseImpact: Float get() = _baseImpact.get().toFloat()
+
+			@PublishedApi
+			internal val _hardnessStressMult: ModConfigSpec.DoubleValue = builder
+				.defineInRange("hardnessStressMult", 0.45, 0.0, 10.0)
+			inline val hardnessStressMult: Float get() = _hardnessStressMult.get().toFloat()
+
+			@PublishedApi
+			internal val _lubeStressReduction: ModConfigSpec.DoubleValue = builder
+				.defineInRange("lubeStressReduction", 0.25, 0.0, 1.0)
+			inline val lubeStressReduction: Float get() = _lubeStressReduction.get().toFloat()
+
+			@PublishedApi
+			internal val _maxDrillDepth: ModConfigSpec.IntValue = builder
+				.defineInRange("maxDrillDepth", 64, 1, 512)
+			inline val maxDrillDepth: Int get() = _maxDrillDepth.get()
+
+// Answer 8: no redstone / no comparator for ship. Flags stay false; code ignores signals.
+			@PublishedApi
+			internal val _enableRedstonePause: ModConfigSpec.BooleanValue = builder
+				.comment("Reserved for the future. The drill ignores redstone signals for the ship release.")
+				.define("enableRedstonePause", false)
+			inline val enableRedstonePause: Boolean get() = _enableRedstonePause.get()
+
+			@PublishedApi
+			internal val _enableComparatorOutput: ModConfigSpec.BooleanValue = builder
+				.comment("Reserved for the future. No comparator output is emitted for the ship release.")
+				.define("enableComparatorOutput", false)
+			inline val enableComparatorOutput: Boolean get() = _enableComparatorOutput.get()
 		}
 
 		val ORE_VEINS: OreVeins = run {

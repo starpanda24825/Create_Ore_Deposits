@@ -74,6 +74,7 @@ data object CreateOreDeposits {
 		event.register(CreateOreDepositsDataMaps.DEPOSIT_DATA)
 		event.register(CreateOreDepositsDataMaps.COOLING_FACTOR_DATA)
 		event.register(CreateOreDepositsDataMaps.LUBRICANT_FACTOR_DATA)
+		event.register(CreateOreDepositsDataMaps.TIP_TIER_DATA)
 	}
 
 	@SubscribeEvent
