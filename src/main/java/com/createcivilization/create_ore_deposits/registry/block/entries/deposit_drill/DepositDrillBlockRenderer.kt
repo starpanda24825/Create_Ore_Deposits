@@ -2,6 +2,7 @@ package com.createcivilization.create_ore_deposits.registry.block.entries.deposi
 
 import com.createcivilization.create_ore_deposits.registry.block.entries.deposit_drill.DepositDrillBlockModels.HOSE
 import com.createcivilization.create_ore_deposits.registry.block.entries.deposit_drill.DepositDrillBlockModels.HOSE_HALF
+import com.createcivilization.create_ore_deposits.registry.block.entries.deposit_drill.DepositDrillBlockModels.HOSE_HALF_MAGNET
 import com.createcivilization.create_ore_deposits.registry.block.entries.deposit_drill.DepositDrillBlockModels.DRILL_MAGNET
 
 import com.mojang.blaze3d.vertex.PoseStack
@@ -46,7 +47,6 @@ class DepositDrillBlockRenderer(
 
 		super.renderSafe(be, partialTicks, ms, buffer, light, overlay)
 		val offset: Float = getOffset(be, partialTicks)
-		val running: Boolean = isRunning(be)
 
 		val vb: VertexConsumer = buffer.getBuffer(RenderType.solid())
 		scrollCoil(getRotatedCoil(be), this.coilShift, offset, 1f)
@@ -62,16 +62,15 @@ class DepositDrillBlockRenderer(
 		val magnet = renderMagnet(be)
 		val rope = renderRope(be)
 
-		if (running || offset == 0f) {
-			renderAt(
-				world!!,
-				(if (offset > .25f) magnet else halfMagnet)!!,
-				offset,
-				pos,
-				ms,
-				vb
-			)
-		}
+		// the magnet hangs at the end of the rope, so it always draws at the lowered position
+		renderAt(
+			world!!,
+			(if (offset > .25f) magnet else halfMagnet)!!,
+			offset,
+			pos,
+			ms,
+			vb
+		)
 
 		val f: Float = offset % 1
 		if (offset > .75f && (f !in .25f.. .75f)) renderAt(
@@ -83,8 +82,7 @@ class DepositDrillBlockRenderer(
 			vb
 		)
 
-		if (!running) return
-
+		// rope segments follow the actual lowered offset, not the mining state
 		var i = 0
 		while (i < offset - 1.25f) {
 			renderAt(world!!, rope, offset - i - 1, pos, ms, vb)
@@ -95,7 +93,8 @@ class DepositDrillBlockRenderer(
 	fun getShaftAxis(be: DepositDrillBlockEntity): Direction.Axis =
 		be.blockState.getValue(BlockStateProperties.HORIZONTAL_FACING).clockWise.axis
 
-	private val halfMagnet: PartialModel = HOSE
+	// used to be HOSE by mistake, the half magnet is HOSE_HALF_MAGNET
+	private val halfMagnet: PartialModel = HOSE_HALF_MAGNET
 	private val halfRope: PartialModel = HOSE_HALF
 	val coil: PartialModel get() = AllPartialModels.HOSE_COIL
 
@@ -106,9 +105,6 @@ class DepositDrillBlockRenderer(
 	fun renderMagnet(be: DepositDrillBlockEntity): SuperByteBuffer = CachedBuffers.partial(DRILL_MAGNET, be.blockState)
 
 	fun getOffset(be: DepositDrillBlockEntity, partialTicks: Float): Float = be.getInterpolatedOffset(partialTicks)
-
-	// TODO: Derive from actual block entity state.
-	fun isRunning(be: DepositDrillBlockEntity): Boolean = true
 
 	override fun getRenderedBlockState(be: DepositDrillBlockEntity): BlockState = shaft(getShaftAxis(be))
 

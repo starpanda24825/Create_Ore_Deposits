@@ -68,6 +68,9 @@ class DepositDrillBlockVisual(
 
 	private val lightCache = LightCache()
 
+	// cache tip models per Item so the BakedModel doesn't get rebuilt every frame
+	private val tipModelCache: HashMap<Item, Model> = HashMap()
+
 	private var offset = 0f
 	private var drillRotation = 0f
 
@@ -85,7 +88,7 @@ class DepositDrillBlockVisual(
 		this.magnet = magnetInstancer().createInstance()
 
 		this.renderedTipItem = currentTipRenderStack().item
-		this.tip = this.tipModel.createInstance()
+		this.tip = tipInstanceFor(currentTipRenderStack())
 
 		this.rope = SmartRecycler<Boolean, TransformedInstance> { b: Boolean -> if (b) this.halfRopeModel.createInstance() else this.ropeModel.createInstance() }
 
@@ -105,14 +108,6 @@ class DepositDrillBlockVisual(
 	val magnetModel: Instancer<TransformedInstance> get() =
 		instancerProvider().instancer(InstanceTypes.TRANSFORMED, Models.partial(DRILL_MAGNET))
 
-	val tipModel: Instancer<TransformedInstance> get() {
-		var stack: ItemStack = this.blockEntity.getDrillTipItemHandler().getStackInSlot(0)
-		if (stack.isEmpty) stack = ItemStack(Items.NETHERITE_BLOCK) // Placeholder item that should never render
-		val bakedModel: BakedModel = Minecraft.getInstance().itemRenderer.getModel(stack, null, null, 0)
-		val model: Model = BakedModelBuilder(bakedModel).build()
-		return instancerProvider().instancer(InstanceTypes.TRANSFORMED, model)
-	}
-
 	val halfMagnetModel: Instancer<TransformedInstance> get() =
 		instancerProvider().instancer(InstanceTypes.TRANSFORMED, Models.partial(HOSE_HALF_MAGNET))
 
@@ -124,10 +119,20 @@ class DepositDrillBlockVisual(
 
 	fun getOffset(pt: Float): Float = blockEntity.getInterpolatedOffset(pt)
 
-	private fun currentTipRenderStack(): ItemStack {
-		var stack: ItemStack = this.blockEntity.getDrillTipItemHandler().getStackInSlot(0)
-		if (stack.isEmpty) stack = ItemStack(Items.NETHERITE_BLOCK) // Placeholder item that should never render
-		return stack
+	private fun currentTipRenderStack(): ItemStack =
+		this.blockEntity.getDrillTipItemHandler().getStackInSlot(0)
+
+	private fun cachedTipModel(stack: ItemStack): Model {
+		return tipModelCache.getOrPut(stack.item) {
+			val bakedModel: BakedModel = Minecraft.getInstance().itemRenderer.getModel(stack, null, null, 0)
+			BakedModelBuilder(bakedModel).build()
+		}
+	}
+
+	private fun tipInstanceFor(stack: ItemStack): TransformedInstance {
+		// no tip, make an instance from the cached model and just keep it hidden in animate()
+		val model: Model = cachedTipModel(if (stack.isEmpty) ItemStack(Items.NETHERITE_BLOCK) else stack)
+		return instancerProvider().instancer(InstanceTypes.TRANSFORMED, model).createInstance()
 	}
 
 	private fun refreshTipInstance() {
@@ -135,10 +140,8 @@ class DepositDrillBlockVisual(
 		if (stack.item == renderedTipItem) return
 		tip.delete()
 		renderedTipItem = stack.item
-		tip = tipModel.createInstance()
+		tip = tipInstanceFor(stack)
 	}
-
-	val isRunning: Boolean = true
 
 	val coilAnimation: SpriteShiftEntry get() = AllSpriteShifts.HOSE_PULLEY_COIL
 
@@ -156,8 +159,10 @@ class DepositDrillBlockVisual(
 		coil.offsetV = -offset
 		coil.setChanged()
 
-		magnet.setVisible(this.isRunning || offset == 0f)
-		tip.setVisible((this.isRunning || offset == 0f) && !stack.isEmpty)
+		// magnet and tip hang at the very end of the rope, so they show whenever the rope is
+		// out. used to hide them unless the drill was working, which made a fresh tip invisible
+		magnet.setVisible(true)
+		tip.setVisible(!stack.isEmpty)
 
 		magnetInstancer().stealInstance(magnet)
 
@@ -166,11 +171,22 @@ class DepositDrillBlockVisual(
 			.translate(0f, -offset, 0f)
 			.light(lightCache.getPackedLight(max(0, Mth.floor(offset))))
 			.setChanged()
+
+		// overheated drills jitter a bit, critical ones glow red
+		val temp: Float = blockEntity.getDisplayTemperature()
+		var rotation: Float = drillRotation
+		if (temp > 600f) rotation += ((AnimationTickHolder.getRenderTime(blockEntity.getLevel()!!) % 2.0) - 1.0).toFloat()
+		if (temp > 900f) {
+			tip.color(1f, 0.35f, 0.35f)
+		} else {
+			tip.color(1f, 1f, 1f)
+		}
+
 		tip.setIdentityTransform()
 			.translate(visualPosition)
 			.translate(0f, -offset - 2/16f, 0f)
 			.center()
-			.rotateYDegrees(drillRotation)
+			.rotateYDegrees(rotation)
 			.uncenter()
 			.light(lightCache.getPackedLight(max(0, Mth.floor(offset))))
 			.setChanged()
@@ -189,17 +205,17 @@ class DepositDrillBlockVisual(
 				.setChanged()
 		}
 
-		if (this.isRunning) {
-			val neededRopeCount: Int = this.neededRopeCount
+		// rope segments come from how far the drill is lowered, not from whether it happens to
+		// be mining. neededRopeCount is 0 while the rope is still short
+		val neededRopeCount: Int = this.neededRopeCount
 
-			for (i in 0..<neededRopeCount) {
-				rope.get(false)!!
-					.setIdentityTransform()
-					.translate(visualPosition)
-					.translate(0f, -offset + i + 1, 0f)
-					.light(lightCache.getPackedLight(neededRopeCount - 1 - i))
-					.setChanged()
-			}
+		for (i in 0..<neededRopeCount) {
+			rope.get(false)!!
+				.setIdentityTransform()
+				.translate(visualPosition)
+				.translate(0f, -offset + i + 1, 0f)
+				.light(lightCache.getPackedLight(neededRopeCount - 1 - i))
+				.setChanged()
 		}
 
 		rope.discardExtra()
@@ -218,6 +234,14 @@ class DepositDrillBlockVisual(
 		lightCache.setSize(Mth.ceil(offset) + 2)
 	}
 
+	override fun _delete() {
+		super._delete()
+		coil.delete()
+		magnet.delete()
+		rope.delete()
+		tip.delete()
+	}
+
 	private val neededRopeCount: Int
 		get() = max(0, Mth.ceil(offset - 1.25f))
 
@@ -230,14 +254,6 @@ class DepositDrillBlockVisual(
 		super.collectCrumblingInstances(consumer)
 		consumer.accept(coil)
 		consumer.accept(magnet)
-	}
-
-	override fun _delete() {
-		super._delete()
-		coil.delete()
-		magnet.delete()
-		rope.delete()
-		tip.delete()
 	}
 
 	private inner class LightCache {
