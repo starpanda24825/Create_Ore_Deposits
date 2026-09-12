@@ -45,6 +45,15 @@ data object Config {
 			inline val heatPerTickHardness: Float get() = _heatPerTickHardness.get().toFloat()
 
 			@PublishedApi
+			internal val _minHeatLoad: ModConfigSpec.DoubleValue = builder
+				.comment(
+					"Lowest heat load a running drill can have, as a fraction of 64 RPM.",
+					"Without a floor a slow drill settles at a cool equilibrium and never overheats."
+				)
+				.defineInRange("minHeatLoad", 1.0, 0.0, 100.0)
+			inline val minHeatLoad: Float get() = _minHeatLoad.get().toFloat()
+
+			@PublishedApi
 			internal val _lubeHeatReduction: ModConfigSpec.DoubleValue = builder
 				.comment(
 					"Lubricant cuts heat generation. Final reduction = lubricant factor * tank fill * this value, capped at 90%.",

@@ -367,10 +367,12 @@ class DepositDrillBlockEntity(
 		val lubeCut: Float = (getLubricantFactor() * getLubricantFill() * cfg.lubeHeatReduction)
 			.coerceIn(0f, 0.9f)
 
+		// heat load, floored at minHeatLoad. without the floor a slow drill settles at a cool
+		// equilibrium and never gets anywhere near the overheat point, no matter how long you run it.
+		val load: Float = (speed / 64f).coerceAtLeast(cfg.minHeatLoad)
+
 		val heat: Float = if (isMining) {
-			(speed / 64f).coerceAtLeast(0f) *
-				(cfg.heatPerTickBase + hardness * cfg.heatPerTickHardness) *
-				(1f - lubeCut)
+			(cfg.heatPerTickBase + hardness * cfg.heatPerTickHardness) * load * (1f - lubeCut)
 		} else 0f
 
 		// passive cooling plus whatever the coolant is worth right now. clamped so a wild
@@ -379,7 +381,9 @@ class DepositDrillBlockEntity(
 			getCoolingFactor() * getCoolantFill() * cfg.coolantCoolingMult).coerceIn(0f, 0.9f)
 
 		temperature += heat - cooling * (temperature - ambient)
-		temperature = temperature.coerceAtLeast(ambient)
+		// tops out at full overheat severity, the rest of the heat just goes nowhere
+		val ceiling: Float = maxOf(cfg.criticalThreshold, cfg.overheatThreshold)
+		temperature = temperature.coerceIn(ambient, ceiling)
 	}
 
 	// tips wear down only while the drill runs past the overheat threshold. hotter means
