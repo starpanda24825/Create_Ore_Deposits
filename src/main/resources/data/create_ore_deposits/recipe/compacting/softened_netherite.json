@@ -3,7 +3,7 @@
 	"heat_requirement": "superheated",
 	"ingredients": [
 		{
-			"item": "create_ore_deposits:ur_netherite_ingot"
+			"item": "create_ore_deposits:unrefined_netherite"
 		},
 		{
 			"type": "fluid_stack",

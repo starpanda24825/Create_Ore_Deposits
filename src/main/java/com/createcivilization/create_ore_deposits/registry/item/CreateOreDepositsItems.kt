@@ -236,7 +236,7 @@ object CreateOreDepositsItems {
 		.register()
 
 	@JvmField
-	val UNREFINED_NETHERITE_INGOT: ItemEntry<Item> = REGISTRATE.item("ur_netherite_ingot", ::Item)
+	val UNREFINED_NETHERITE: ItemEntry<Item> = REGISTRATE.item("unrefined_netherite", ::Item)
 		.defaultModel()
 		.register()
 

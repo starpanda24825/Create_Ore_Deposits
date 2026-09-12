@@ -88,7 +88,7 @@
   "item.create_ore_deposits.unrefined_lapis_ore": "Unrefined Lapis Ore",
   "item.create_ore_deposits.unrefined_quartz_ore": "Unrefined Quartz Ore",
   "item.create_ore_deposits.unrefined_quartz_ore_powder": "Unrefined Quartz Ore Powder",
-  "item.create_ore_deposits.ur_netherite_ingot": "Ur Netherite Ingot",
+  "item.create_ore_deposits.unrefined_netherite": "Unrefined Netherite Ingot",
   "item.create_ore_deposits.waste_slurry_bucket": "Waste Slurry Bucket",
   "item.create_ore_deposits.zinc_powder": "Zinc Powder"
 }
