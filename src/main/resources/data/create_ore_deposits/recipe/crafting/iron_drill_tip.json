@@ -4,10 +4,11 @@
 	"pattern": [
 		"I I",
 		" I ",
-		"I I"
+		"ICI"
 	],
 	"key": {
-		"I": { "item": "minecraft:iron_ingot" }
+		"I": { "item": "minecraft:iron_ingot" },
+		"C": { "item": "create:cogwheel"}
 	},
 	"result": {
 		"id": "create_ore_deposits:iron_drill_tip",

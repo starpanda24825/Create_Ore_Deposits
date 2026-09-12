@@ -1,19 +1,18 @@
 {
-	"type": "minecraft:crafting_shaped",
-	"category": "misc",
+	"type": "create:mechanical_crafting",
 	"pattern": [
-		"ISI",
-		"BCB",
-		"ISI"
+		"SSS",
+		"PRP",
+		"SSS"
 	],
 	"key": {
-		"I": { "item": "minecraft:iron_ingot" },
-		"S": { "item": "create:shaft" },
-		"B": { "item": "create:brass_casing" },
-		"C": { "item": "create:cogwheel" }
+		"S": { "item": "create:sturdy_sheet" },
+		"P": { "item": "create:precision_mechanism" },
+		"R": { "item": "create:rope_pulley" }
 	},
 	"result": {
 		"id": "create_ore_deposits:deposit_drill",
 		"count": 1
-	}
+	},
+	"accept_mirrored": false
 }

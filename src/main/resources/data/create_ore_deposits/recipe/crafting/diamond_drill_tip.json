@@ -8,7 +8,7 @@
 	],
 	"key": {
 		"D": { "item": "minecraft:diamond" },
-		"I": { "item": "minecraft:iron_ingot" }
+		"I": { "item": "create_ore_deposits:iron_drill_tip" }
 	},
 	"result": {
 		"id": "create_ore_deposits:diamond_drill_tip",

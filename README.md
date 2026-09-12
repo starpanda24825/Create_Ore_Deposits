@@ -18,9 +18,9 @@ This mod aims to add drills and deposits to allow for a more fair way to get lar
 - [x] Tip durability tooltip.
 - [x] Lubricant tooltip.
 - [x] Coolant tooltip.
-- [ ] Temperature affects tip durability.
-- [ ] Deposits require matching tip type.
-- [ ] Crafting recipes for drills and tips.
+- [x] Temperature affects tip durability.
+- [x] Deposits require matching tip type.
+- [x] Crafting recipes for drills and tips.
 
 ### Fluids
 - [ ] Tiered lubricants.
@@ -28,11 +28,11 @@ This mod aims to add drills and deposits to allow for a more fair way to get lar
 - [x] Coolant being used during drilling.
 
 ### Refinement
-- [ ] Unprocessed ore items.
-- [ ] Refining recipe tree.
+- [x] Unprocessed ore items.
+- [x] Refining recipe tree.
 
 ### World & Polish
-- [ ] World generation for ore deposits.
+- [x] World generation for ore deposits.
 - [ ] Textures & models.
 - [ ] Ponder scenes.
 

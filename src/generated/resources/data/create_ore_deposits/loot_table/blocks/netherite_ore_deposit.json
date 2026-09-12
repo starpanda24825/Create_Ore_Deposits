@@ -12,7 +12,7 @@
               "condition": "minecraft:random_chance"
             }
           ],
-          "name": "create_ore_deposits:unrefined_netherite_ore"
+          "name": "minecraft:ancient_debris"
         }
       ],
       "rolls": 1.0

@@ -22,13 +22,45 @@ data object Config {
 
 // Heat & cooling
 			@PublishedApi
-			internal val _baseCooling: ModConfigSpec.DoubleValue = builder.defineInRange("baseCooling", 0.05, 0.0, 10.0)
-			inline val baseCooling: Float get() = _baseCooling.get().toFloat()
-
-			@PublishedApi
 			internal val _baseTemperature: ModConfigSpec.DoubleValue =
 				builder.defineInRange("baseTemperature", 293.0, -1000.0, 5000.0)
 			inline val baseTemperature: Float get() = _baseTemperature.get().toFloat()
+
+			@PublishedApi
+			internal val _baseCooling: ModConfigSpec.DoubleValue = builder
+				.comment("Passive cooling per tick. Cooling pulls the temperature back toward baseTemperature.")
+				.defineInRange("baseCooling", 0.004, 0.0, 10.0)
+			inline val baseCooling: Float get() = _baseCooling.get().toFloat()
+
+			@PublishedApi
+			internal val _heatPerTickBase: ModConfigSpec.DoubleValue = builder
+				.comment("Heat added per tick per 64 RPM while mining, before hardness. Mining always makes heat, fluids only slow it.")
+				.defineInRange("heatPerTickBase", 0.20, 0.0, 100.0)
+			inline val heatPerTickBase: Float get() = _heatPerTickBase.get().toFloat()
+
+			@PublishedApi
+			internal val _heatPerTickHardness: ModConfigSpec.DoubleValue = builder
+				.comment("Extra heat added per tick per 64 RPM for each point of deposit hardness.")
+				.defineInRange("heatPerTickHardness", 0.35, 0.0, 100.0)
+			inline val heatPerTickHardness: Float get() = _heatPerTickHardness.get().toFloat()
+
+			@PublishedApi
+			internal val _lubeHeatReduction: ModConfigSpec.DoubleValue = builder
+				.comment(
+					"Lubricant cuts heat generation. Final reduction = lubricant factor * tank fill * this value, capped at 90%.",
+					"A full lubricant tank can almost stop the drill from heating up at all."
+				)
+				.defineInRange("lubeHeatReduction", 0.25, 0.0, 1.0)
+			inline val lubeHeatReduction: Float get() = _lubeHeatReduction.get().toFloat()
+
+			@PublishedApi
+			internal val _coolantCoolingMult: ModConfigSpec.DoubleValue = builder
+				.comment(
+					"Coolant carries heat away. Added cooling = coolant factor * tank fill * this value.",
+					"A full coolant tank can hold the temperature flat even in the hardest deposits."
+				)
+				.defineInRange("coolantCoolingMult", 0.03, 0.0, 1.0)
+			inline val coolantCoolingMult: Float get() = _coolantCoolingMult.get().toFloat()
 
 // Extraction pacing (ticks per simulated loot roll)
 			@PublishedApi
@@ -62,7 +94,7 @@ data object Config {
 				.defineInRange("maxInterval", 600, 1, 10000)
 			inline val maxInterval: Int get() = _maxInterval.get()
 
-// Fluid consumption (Answer 4: fluids are mandatory, these are consumed while actively mining)
+// Fluid consumption (fluids are optional but help a lot with heat; consumed while mining)
 			@PublishedApi
 			internal val _lubeDrainPerLazy: ModConfigSpec.IntValue = builder
 				.comment("Lubricant drained per lazy tick while mining (lazy tick = every 10 ticks). Speed adds +speed/128.")
@@ -87,21 +119,36 @@ data object Config {
 				.defineInRange("regenerationTicks", 72000, 1, Int.MAX_VALUE)
 			inline val regenerationTicks: Int get() = _regenerationTicks.get()
 
-// Answer 2B: overheat / critical hysteresis
+// Overheating. past overheatThreshold the drill slows down and starts eating the tip.
 			@PublishedApi
 			internal val _overheatThreshold: ModConfigSpec.DoubleValue = builder
+				.comment("Above this temperature the drill extracts slower and wears its tip down.")
 				.defineInRange("overheatThreshold", 600.0, 0.0, 5000.0)
 			inline val overheatThreshold: Float get() = _overheatThreshold.get().toFloat()
 
 			@PublishedApi
 			internal val _criticalThreshold: ModConfigSpec.DoubleValue = builder
+				.comment("Temperature where overheat effects are at full strength (max slowdown + max tip wear).")
 				.defineInRange("criticalThreshold", 900.0, 0.0, 5000.0)
 			inline val criticalThreshold: Float get() = _criticalThreshold.get().toFloat()
 
 			@PublishedApi
-			internal val _criticalHysteresis: ModConfigSpec.DoubleValue = builder
-				.defineInRange("criticalHysteresis", 700.0, 0.0, 5000.0)
-			inline val criticalHysteresis: Float get() = _criticalHysteresis.get().toFloat()
+			internal val _overheatSlowdown: ModConfigSpec.DoubleValue = builder
+				.comment("At full overheat the extraction interval is multiplied by (1 + this). 2.0 = up to 3x slower.")
+				.defineInRange("overheatSlowdown", 2.0, 0.0, 100.0)
+			inline val overheatSlowdown: Float get() = _overheatSlowdown.get().toFloat()
+
+			@PublishedApi
+			internal val _maxTipWearPerTick: ModConfigSpec.DoubleValue = builder
+				.comment("Tip durability lost per tick at full overheat. Fractional values accumulate. 0 disables tip wear.")
+				.defineInRange("maxTipWearPerTick", 0.15, 0.0, 100.0)
+			inline val maxTipWearPerTick: Float get() = _maxTipWearPerTick.get().toFloat()
+
+			@PublishedApi
+			internal val _wornTipSlowdown: ModConfigSpec.DoubleValue = builder
+				.comment("A worn tip mines slower. At 0 durability the extraction interval is multiplied by (1 + this).")
+				.defineInRange("wornTipSlowdown", 1.5, 0.0, 100.0)
+			inline val wornTipSlowdown: Float get() = _wornTipSlowdown.get().toFloat()
 
 // Stress
 			@PublishedApi

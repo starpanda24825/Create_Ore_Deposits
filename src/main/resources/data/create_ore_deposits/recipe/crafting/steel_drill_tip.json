@@ -8,11 +8,10 @@
 	],
 	"key": {
 		"S": { "item": "create_ore_deposits:steel_ingot" },
-		"I": { "item": "minecraft:iron_ingot" }
+		"I": { "item": "create_ore_deposits:iron_drill_tip" }
 	},
 	"result": {
 		"id": "create_ore_deposits:steel_drill_tip",
 		"count": 1
 	}
 }
-

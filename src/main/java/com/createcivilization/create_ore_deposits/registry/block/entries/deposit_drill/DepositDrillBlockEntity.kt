@@ -57,14 +57,10 @@ enum class DrillState {
 	IDLE,
 	MINING,
 	OVERHEATING,
-	CRITICAL,
 	JAMMED,
 	NO_TIP,
 	INSUFFICIENT_TIP,
-	NO_POWER,
-	FLUID_STARVED_LUBE,
-	FLUID_STARVED_COOLANT,
-	FLUID_STARVED_BOTH
+	NO_POWER
 }
 
 class DepositDrillBlockEntity(
@@ -87,6 +83,8 @@ class DepositDrillBlockEntity(
 	private var currentDepositPos: BlockPos? = null
 	private var drillState: DrillState = DrillState.IDLE
 	private var isActuallyMiningSnapshot: Boolean = false
+	// fractional tip wear, lets mild overheating eat the tip slowly instead of in big jumps
+	private var tipWearAccumulator: Float = 0f
 
 	private var depositQueue: ArrayDeque<BlockPos> = ArrayDeque()
 	private val depositQueueSet: MutableSet<BlockPos> = HashSet(256)
@@ -141,12 +139,9 @@ class DepositDrillBlockEntity(
 
 		emitDrillFeedback()
 
-		// paused states don't extract. CRITICAL pauses too but damageTip still runs below,
-		// and it hits twice as hard.
-		if (!isActuallyMiningSnapshot) {
-			damageTip()
-			return
-		}
+		// nothing to mine right now (idle, no tip, jammed, no power), so skip extraction.
+		// the tip only wears while actually turning through a deposit, not while parked.
+		if (!isActuallyMiningSnapshot) return
 
 		onBreakTick()
 		damageTip()
@@ -157,11 +152,7 @@ class DepositDrillBlockEntity(
 	override fun shouldRun(): Boolean = when (drillState) {
 		DrillState.NO_TIP,
 		DrillState.INSUFFICIENT_TIP,
-		DrillState.FLUID_STARVED_LUBE,
-		DrillState.FLUID_STARVED_COOLANT,
-		DrillState.FLUID_STARVED_BOTH,
-		DrillState.JAMMED,
-		DrillState.CRITICAL -> false
+		DrillState.JAMMED -> false
 		else -> true
 	}
 
@@ -171,7 +162,7 @@ class DepositDrillBlockEntity(
 		sendData()
 
 		// only drink fluids while actually mining or overheating. nothing drains when idle,
-		// jammed, starved or paused, before this it drained off speed no matter what.
+		// jammed or parked. fluids are optional, they just keep the temperature down.
 		if (!isActuallyMiningSnapshot) return
 
 		val cfg = Config.SERVER.DEPOSIT_DRILL
@@ -270,16 +261,10 @@ class DepositDrillBlockEntity(
 	fun canMine(): Boolean {
 		val tip: ItemStack = drillTipHandler.getStackInSlot(0)
 		if (tip.isEmpty || !tip.tags.anyMatch(CreateOreDepositsTags.DRILL_TIP::equals)) return false
-		// fluids are mandatory, no mining dry
-		if (!hasFluids()) return false
 		val target: BlockState? = getTargetBlockState()
 		if (target != null && isDeposit(target) && !isTipSufficientFor(target)) return false
 		return hasOutputSpace()
 	}
-
-	// both fluids are needed to mine anything
-	fun hasFluids(): Boolean =
-		!lubricantHandler.getFluidInTank(0).isEmpty && !coolantHandler.getFluidInTank(0).isEmpty
 
 	// tips are disposable, no repair. tier comes from the tags first, then the datamap.
 	fun getTipTier(stack: ItemStack): Int = when {
@@ -331,8 +316,11 @@ class DepositDrillBlockEntity(
 		val speedBonus = (speed * (cfg.speedFactor + getLubricantFactor() * cfg.lubeTickBonus)).roundToInt()
 		val penalty = (getBlockHardness(getTargetBlockState()) * cfg.hardnessTickPenalty).roundToInt()
 		var interval = base - speedBonus + penalty
-		// overheating runs 1.5x slower
-		if (drillState == DrillState.OVERHEATING) interval = (interval * 1.5f).toInt()
+		// the hotter it runs past the overheat threshold, the slower it pulls ore out.
+		// at full severity that's (1 + overheatSlowdown)x the normal interval.
+		interval = (interval * (1f + getOverheatFactor() * cfg.overheatSlowdown)).toInt()
+		// a worn tip bites worse too, so the closer it is to breaking the slower it cuts
+		interval = (interval * (1f + getTipWearFraction() * cfg.wornTipSlowdown)).toInt()
 		return interval.coerceIn(cfg.minInterval, cfg.maxInterval)
 	}
 
@@ -367,58 +355,62 @@ class DepositDrillBlockEntity(
 		level?.destroyBlockProgress(blockPos.hashCode(), targetPos, stage)
 	}
 
-	// heat model. lube cuts friction so less heat builds up, coolant + base cooling bleed it
-	// off. starved drills still run this so they cool down and start cold again once refilled.
+	// heat model. mining always makes heat, no fluids required. lubricant cuts the friction
+	// so less heat gets made in the first place, coolant carries heat away faster. how much
+	// either helps scales with how full its tank is, so a full setup can hold the
+	// temperature flat while a dry drill slowly climbs past the overheat point.
 	fun updateTemperature(isMining: Boolean, hardness: Float) {
 		val cfg = Config.SERVER.DEPOSIT_DRILL
-		val baseTemperature = cfg.baseTemperature
-		val lubeFactor = getLubricantFactor()
-		val coolantFactor = getCoolingFactor()
+		val ambient = cfg.baseTemperature
 
-		val heatGen: Float = if (isMining) {
-			speed * (0.02f + hardness * 0.015f) * (1f - lubeFactor * 0.15f)
+		// lube reduces generated heat, capped so it can never fully zero it out
+		val lubeCut: Float = (getLubricantFactor() * getLubricantFill() * cfg.lubeHeatReduction)
+			.coerceIn(0f, 0.9f)
+
+		val heat: Float = if (isMining) {
+			(speed / 64f).coerceAtLeast(0f) *
+				(cfg.heatPerTickBase + hardness * cfg.heatPerTickHardness) *
+				(1f - lubeCut)
 		} else 0f
 
-		val dissipation: Float = (0.05f + cfg.baseCooling + lubeFactor * 0.6f + coolantFactor * 0.8f)
-			.coerceAtLeast(0.1f)
-		val equilibriumTemp: Float = baseTemperature + (heatGen / dissipation)
-		val approachRate: Float = (0.015f * dissipation).coerceIn(0.01f, 0.15f)
+		// passive cooling plus whatever the coolant is worth right now. clamped so a wild
+		// config can't overshoot the step and make the temperature bounce around.
+		val cooling: Float = (cfg.baseCooling +
+			getCoolingFactor() * getCoolantFill() * cfg.coolantCoolingMult).coerceIn(0f, 0.9f)
 
-		temperature += (equilibriumTemp - temperature) * approachRate
+		temperature += heat - cooling * (temperature - ambient)
+		temperature = temperature.coerceAtLeast(ambient)
 	}
 
-	// tips are disposable and take damage per tick while hot. no repair, setNoRepair() is set
-	// at registration, and a broken tip just gets removed.
+	// tips wear down only while the drill runs past the overheat threshold. hotter means
+	// faster wear, and at zero durability the tip is gone for good (setNoRepair at reg).
 	private fun damageTip() {
 		val itemStack: ItemStack = drillTipHandler.getStackInSlot(0)
 		if (itemStack.isEmpty || !itemStack.tags.anyMatch(CreateOreDepositsTags.DRILL_TIP::equals)) return
-
-		val excessTemp: Float = (temperature - Config.SERVER.DEPOSIT_DRILL.baseTemperature).coerceAtLeast(0f)
-
-		var damage: Int = when {
-			excessTemp < 25f -> 0
-			excessTemp < 60f -> 1
-			excessTemp < 120f -> 2
-			excessTemp < 250f -> 4
-			else -> 8
-		}
-		// CRITICAL doubles tip wear
-		if (drillState == DrillState.CRITICAL) damage *= 2
-
-		if (damage < 1) return
 		if (level?.isClientSide == true) return
-		val world: ServerLevel = level as? ServerLevel ?: return
 
+		val cfg = Config.SERVER.DEPOSIT_DRILL
+		val overheat: Float = getOverheatFactor()
+		if (overheat <= 0f) return
+
+		// fractional so mild overheating wears a tip down slowly instead of not at all
+		tipWearAccumulator += overheat * cfg.maxTipWearPerTick
+		val damage: Int = tipWearAccumulator.toInt()
+		if (damage < 1) return
+		tipWearAccumulator -= damage
+
+		val world: ServerLevel = level as? ServerLevel ?: return
 		itemStack.hurtAndBreak(damage, world, null) {
 			drillTipHandler.setStackInSlot(0, ItemStack.EMPTY)
-			temperature = Config.SERVER.DEPOSIT_DRILL.baseTemperature + 50f
+			temperature = cfg.baseTemperature + 50f
+			tipWearAccumulator = 0f
 			notifyUpdate()
 			world.playSound(null, worldPosition, SoundEvents.ITEM_BREAK, SoundSource.BLOCKS, 1.0f, 1.0f)
 		}
 	}
 
-	// overheat/critical hysteresis. once it hits CRITICAL it stays there until it cools below
-	// criticalHysteresis, otherwise it flips back and forth right on the threshold
+	// overheating doesn't stop the drill anymore, it just slows it down and roughens the
+	// tip. fluids are optional and only change how fast the temperature climbs.
 	fun recomputeState(): DrillState {
 		val cfg = Config.SERVER.DEPOSIT_DRILL
 		val tip: ItemStack = drillTipHandler.getStackInSlot(0)
@@ -426,21 +418,11 @@ class DepositDrillBlockEntity(
 
 		if (tip.isEmpty) return DrillState.NO_TIP
 		if (target != null && isDeposit(target) && !isTipSufficientFor(target)) return DrillState.INSUFFICIENT_TIP
-
-		val lubeEmpty: Boolean = lubricantHandler.getFluidInTank(0).isEmpty
-		val coolantEmpty: Boolean = coolantHandler.getFluidInTank(0).isEmpty
-		if (lubeEmpty && coolantEmpty) return DrillState.FLUID_STARVED_BOTH
-		if (lubeEmpty) return DrillState.FLUID_STARVED_LUBE
-		if (coolantEmpty) return DrillState.FLUID_STARVED_COOLANT
-
 		if (!hasOutputSpace()) return DrillState.JAMMED
 		if (speed == 0f) return DrillState.NO_POWER
 
-		if (temperature > cfg.criticalThreshold) return DrillState.CRITICAL
-		if (drillState == DrillState.CRITICAL && temperature > cfg.criticalHysteresis) return DrillState.CRITICAL
 		if (temperature > cfg.overheatThreshold) return DrillState.OVERHEATING
-
-		if (target != null && isDeposit(target) && speed != 0f) return DrillState.MINING
+		if (target != null && isDeposit(target)) return DrillState.MINING
 		return DrillState.IDLE
 	}
 
@@ -466,6 +448,35 @@ class DepositDrillBlockEntity(
 			.fluidHolder
 			.getData(COOLING_FACTOR_DATA)
 			?.coolingFactor ?: 0.0f
+	}
+
+	// how full each tank is, 0..1. fluids get more effective the more you feed in, so a
+	// topped off tank does far more than a splash at the bottom.
+	fun getLubricantFill(): Float {
+		val capacity = lubricantHandler.getCapacity()
+		if (capacity <= 0) return 0f
+		return (lubricantHandler.getFluidInTank(0).amount.toFloat() / capacity).coerceIn(0f, 1f)
+	}
+
+	fun getCoolantFill(): Float {
+		val capacity = coolantHandler.getCapacity()
+		if (capacity <= 0) return 0f
+		return (coolantHandler.getFluidInTank(0).amount.toFloat() / capacity).coerceIn(0f, 1f)
+	}
+
+	// 0 at or below the overheat threshold, 1 at full severity. drives both the extraction
+	// slowdown and how quickly the tip wears down.
+	fun getOverheatFactor(): Float {
+		val cfg = Config.SERVER.DEPOSIT_DRILL
+		val span = (cfg.criticalThreshold - cfg.overheatThreshold).coerceAtLeast(1f)
+		return ((temperature - cfg.overheatThreshold) / span).coerceIn(0f, 1f)
+	}
+
+	// 0 = fresh tip, 1 = one hit from breaking. 0 when the tip can't take durability damage.
+	fun getTipWearFraction(): Float {
+		val tip: ItemStack = drillTipHandler.getStackInSlot(0)
+		if (tip.isEmpty || tip.maxDamage <= 0) return 0f
+		return (tip.damageValue.toFloat() / tip.maxDamage).coerceIn(0f, 1f)
 	}
 
 	private fun isDeposit(state: BlockState?): Boolean = state?.`is`(CreateOreDepositsTags.DEPOSIT) ?: false
@@ -659,32 +670,66 @@ class DepositDrillBlockEntity(
 				.forGoggles(tooltip)
 		}
 
-		// heat, using the smoothed value so it doesn't jitter
+		// heat, using the smoothed value so it doesn't jitter. shows the threshold so it's
+		// obvious how close the drill is to cooking itself.
+		val cfg = Config.SERVER.DEPOSIT_DRILL
+		val overheat: Float = getOverheatFactor()
 		val heatBar: String = makeHeatBar(displayTemperature.toInt())
-		translate("tooltip.drill.heat", displayTemperature.toInt(), heatBar)
-			.style(ChatFormatting.RED)
+		val heatColor: ChatFormatting = if (overheat > 0f) ChatFormatting.RED else ChatFormatting.GREEN
+		translate("tooltip.drill.heat", displayTemperature.toInt(), cfg.overheatThreshold.toInt(), heatBar)
+			.style(heatColor)
 			.forGoggles(tooltip)
+
+		// only shown while actually overheating, and spells out what it's costing you
+		if (overheat > 0f) {
+			val slower: Int = (overheat * cfg.overheatSlowdown * 100f).toInt()
+			translate("tooltip.drill.overheat", slower, overheat * cfg.maxTipWearPerTick)
+				.style(ChatFormatting.RED)
+				.forGoggles(tooltip)
+		}
 
 		// tip, disposable and unrepairable
 		val tipStack: ItemStack = drillTipHandler.getStackInSlot(0)
 		if (!tipStack.isEmpty) {
-			val currentDurability: Int = tipStack.maxDamage - tipStack.damageValue
-			val percentage: Int = (currentDurability * 100) / tipStack.maxDamage
-			translate(
-				"tooltip.drill.tip.line",
-				Component.translatable(tipStack.item.descriptionId),
-				currentDurability,
-				tipStack.maxDamage,
-				percentage,
-				translate("tooltip.drill.tip.disposable").component()
-			)
-				.style(ChatFormatting.GREEN)
-				.forGoggles(tooltip)
+			if (tipStack.maxDamage > 0) {
+				val currentDurability: Int = tipStack.maxDamage - tipStack.damageValue
+				val percentage: Int = (currentDurability * 100) / tipStack.maxDamage
+				// short bar, and the tip/durability/disposable bits get their own lines. all on
+				// one line this ran way past the edge of the screen
+				val tipBar: String = TooltipHelper.makeProgressBar(10, (percentage / 10).coerceIn(0, 10))
+				translate("tooltip.drill.tip.line", Component.translatable(tipStack.item.descriptionId))
+					.style(ChatFormatting.GREEN)
+					.forGoggles(tooltip)
+				translate("tooltip.drill.tip.durability", currentDurability, tipStack.maxDamage, percentage, tipBar)
+					.style(ChatFormatting.GREEN)
+					.forGoggles(tooltip)
+				translate("tooltip.drill.tip.disposable")
+					.style(ChatFormatting.DARK_GRAY)
+					.forGoggles(tooltip)
+
+				// only bother mentioning the slowdown once the tip is actually worn
+				val wear: Float = getTipWearFraction()
+				if (wear > 0f) {
+					translate("tooltip.drill.tip.worn", (wear * cfg.wornTipSlowdown * 100f).toInt())
+						.style(ChatFormatting.YELLOW)
+						.forGoggles(tooltip)
+				}
+			} else {
+				translate("tooltip.drill.tip.line_no_durability", Component.translatable(tipStack.item.descriptionId))
+					.style(ChatFormatting.GREEN)
+					.forGoggles(tooltip)
+			}
 		}
 
-		// fluids, mandatory. shown red when missing
-		formatFluidLine(tooltip, "tooltip.drill.fluid.lube", ChatFormatting.GOLD, lubricantHandler, getLubricantFactor())
-		formatFluidLine(tooltip, "tooltip.drill.fluid.coolant", ChatFormatting.AQUA, coolantHandler, getCoolingFactor())
+		// fluids, optional. full tanks hold the temperature flat, empty ones just heat up more
+		formatFluidLine(
+			tooltip, "tooltip.drill.fluid.lube", ChatFormatting.GOLD,
+			lubricantHandler, getLubricantFactor() * getLubricantFill()
+		)
+		formatFluidLine(
+			tooltip, "tooltip.drill.fluid.coolant", ChatFormatting.AQUA,
+			coolantHandler, getCoolingFactor() * getCoolantFill()
+		)
 
 		// stress and output count, no comparator output
 		translate("tooltip.drill.stress", calculateStressApplied().toInt(), speed.toInt())
@@ -694,8 +739,14 @@ class DepositDrillBlockEntity(
 			.style(ChatFormatting.GRAY)
 			.forGoggles(tooltip)
 
-		// Physical I/O hint
+		// Physical I/O hint. one long line before, split so it stays on screen
 		translate("tooltip.drill.hint")
+			.style(ChatFormatting.DARK_GRAY)
+			.forGoggles(tooltip)
+		translate("tooltip.drill.hint2")
+			.style(ChatFormatting.DARK_GRAY)
+			.forGoggles(tooltip)
+		translate("tooltip.drill.hint3")
 			.style(ChatFormatting.DARK_GRAY)
 			.forGoggles(tooltip)
 
@@ -703,7 +754,6 @@ class DepositDrillBlockEntity(
 	}
 
 	private fun formatDrillState(tooltip: MutableList<Component>) {
-		val cfg = Config.SERVER.DEPOSIT_DRILL
 		val target: BlockState? = getTargetBlockState()
 
 		val (key, color, args) = when (drillState) {
@@ -714,13 +764,8 @@ class DepositDrillBlockEntity(
 			)
 			DrillState.OVERHEATING -> Triple(
 				"tooltip.drill.state.overheating",
-				ChatFormatting.YELLOW,
-				arrayOf<Any>(displayTemperature.toInt())
-			)
-			DrillState.CRITICAL -> Triple(
-				"tooltip.drill.state.critical",
 				ChatFormatting.RED,
-				arrayOf<Any>(cfg.criticalHysteresis.toInt())
+				arrayOf<Any>(displayTemperature.toInt())
 			)
 			DrillState.JAMMED -> Triple("tooltip.drill.state.jammed", ChatFormatting.RED, emptyArray())
 			DrillState.NO_TIP -> Triple("tooltip.drill.state.no_tip", ChatFormatting.GRAY, emptyArray())
@@ -729,9 +774,6 @@ class DepositDrillBlockEntity(
 				ChatFormatting.RED,
 				arrayOf<Any>(requiredTierComponent(target))
 			)
-			DrillState.FLUID_STARVED_LUBE -> Triple("tooltip.drill.state.starved_lube", ChatFormatting.RED, emptyArray())
-			DrillState.FLUID_STARVED_COOLANT -> Triple("tooltip.drill.state.starved_coolant", ChatFormatting.RED, emptyArray())
-			DrillState.FLUID_STARVED_BOTH -> Triple("tooltip.drill.state.starved_both", ChatFormatting.RED, emptyArray())
 			DrillState.NO_POWER -> Triple("tooltip.drill.state.no_power", ChatFormatting.GRAY, emptyArray())
 			DrillState.IDLE -> Triple("tooltip.drill.state.idle", ChatFormatting.GRAY, emptyArray())
 		}
@@ -751,7 +793,8 @@ class DepositDrillBlockEntity(
 	private fun makeHeatBar(temp: Int): String {
 		val cfg = Config.SERVER.DEPOSIT_DRILL
 		val min = cfg.baseTemperature.toInt()
-		val max = 1200
+		// scale so the bar tops out just past full overheat severity
+		val max = (cfg.criticalThreshold * 1.25f).toInt().coerceAtLeast(min + 1)
 		val span = (max - min).coerceAtLeast(1)
 		val stage = (((temp - min).toFloat() / span) * 12f).toInt().coerceIn(0, 12)
 		return TooltipHelper.makeProgressBar(12, stage)
@@ -766,8 +809,9 @@ class DepositDrillBlockEntity(
 	) {
 		val fluidStack: FluidStack = handler.getFluidInTank(0)
 		if (fluidStack.isEmpty) {
+			// fluids are optional now, an empty tank is just less cooling, not a stoppage
 			translate("$key.missing")
-				.style(ChatFormatting.RED)
+				.style(ChatFormatting.DARK_GRAY)
 				.forGoggles(tooltip)
 			return
 		}
@@ -795,7 +839,7 @@ class DepositDrillBlockEntity(
 	// TODO: hook up redstone pause + comparator output once those flags are on.
 
 	// smoke + grindstone sound while mining/overheating, lava + smoke + extinguish sound
-	// when CRITICAL. client-side only.
+	// once it's badly overheated. client-side only.
 	private fun emitDrillFeedback() {
 		val level = this.level ?: return
 		if (!level.isClientSide) return
@@ -805,8 +849,16 @@ class DepositDrillBlockEntity(
 		val cy: Double = tipPos.y + 0.5
 		val cz: Double = tipPos.z + 0.5
 
-		when (drillState) {
-			DrillState.MINING, DrillState.OVERHEATING -> {
+		when {
+			// badly overheated, spitting lava and steam
+			getOverheatFactor() >= 0.5f -> {
+				if (level.gameTime % 20L == 0L) {
+					level.addParticle(ParticleTypes.LAVA, cx, cy, cz, 0.0, 0.1, 0.0)
+					level.addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE, cx, cy, cz, 0.0, 0.2, 0.0)
+					level.playLocalSound(cx, cy, cz, SoundEvents.LAVA_EXTINGUISH, SoundSource.BLOCKS, 1.0f, 1.0f, false)
+				}
+			}
+			drillState == DrillState.MINING || drillState == DrillState.OVERHEATING -> {
 				if (level.gameTime % 10L == 0L) {
 					level.addParticle(ParticleTypes.SMOKE, cx, cy, cz, 0.0, 0.1, 0.0)
 					level.playLocalSound(
@@ -817,13 +869,6 @@ class DepositDrillBlockEntity(
 						0.8f + speed / 512f,
 						false
 					)
-				}
-			}
-			DrillState.CRITICAL -> {
-				if (level.gameTime % 20L == 0L) {
-					level.addParticle(ParticleTypes.LAVA, cx, cy, cz, 0.0, 0.1, 0.0)
-					level.addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE, cx, cy, cz, 0.0, 0.2, 0.0)
-					level.playLocalSound(cx, cy, cz, SoundEvents.LAVA_EXTINGUISH, SoundSource.BLOCKS, 1.0f, 1.0f, false)
 				}
 			}
 			else -> Unit
