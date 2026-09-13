@@ -48,6 +48,7 @@ import net.neoforged.neoforge.items.ItemStackHandler
 
 import java.util.ArrayList
 import java.util.HashSet
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private const val MIN_LERP = 0.5
@@ -75,8 +76,6 @@ class DepositDrillBlockEntity(
 	private var temperature: Float = Config.SERVER.DEPOSIT_DRILL.baseTemperature
 	// smoothed copy of temperature for the goggles readout, otherwise the number flickers
 	private var displayTemperature: Float = Config.SERVER.DEPOSIT_DRILL.baseTemperature
-	// hardness grabbed once at the start of the tick, see tick() for why
-	private var lastHardness: Float = 1f
 	private var maxAttempts: Int = 0
 	private var remainingAttempts: Int = 0
 	private var drillTickCounter: Int = 0
@@ -129,7 +128,6 @@ class DepositDrillBlockEntity(
 		val snapTargetState: BlockState? = getTargetBlockState()
 		val snapIsDeposit: Boolean = isDeposit(snapTargetState)
 		val snapHardness: Float = getBlockHardness(snapTargetState)
-		lastHardness = snapHardness
 
 		drillState = recomputeState()
 		isActuallyMiningSnapshot = drillState == DrillState.MINING || drillState == DrillState.OVERHEATING
@@ -386,6 +384,15 @@ class DepositDrillBlockEntity(
 		temperature = temperature.coerceIn(ambient, ceiling)
 	}
 
+	// tip durability lost per tick right now. past the threshold it ramps with severity, then
+	// gets an extra boost the deeper in it goes, so a redlined drill eats tips faster than the
+	// raw heat bar suggests. damageTip() and the goggles tooltip both read this same number.
+	fun getTipWearPerTick(): Float {
+		val cfg = Config.SERVER.DEPOSIT_DRILL
+		val overheat: Float = getOverheatFactor()
+		return overheat * (1f + overheat * cfg.overheatTipWearBoost) * cfg.maxTipWearPerTick
+	}
+
 	// tips wear down only while the drill runs past the overheat threshold. hotter means
 	// faster wear, and at zero durability the tip is gone for good (setNoRepair at reg).
 	private fun damageTip() {
@@ -394,11 +401,10 @@ class DepositDrillBlockEntity(
 		if (level?.isClientSide == true) return
 
 		val cfg = Config.SERVER.DEPOSIT_DRILL
-		val overheat: Float = getOverheatFactor()
-		if (overheat <= 0f) return
+		if (getOverheatFactor() <= 0f) return
 
 		// fractional so mild overheating wears a tip down slowly instead of not at all
-		tipWearAccumulator += overheat * cfg.maxTipWearPerTick
+		tipWearAccumulator += getTipWearPerTick()
 		val damage: Int = tipWearAccumulator.toInt()
 		if (damage < 1) return
 		tipWearAccumulator -= damage
@@ -430,11 +436,7 @@ class DepositDrillBlockEntity(
 		return DrillState.IDLE
 	}
 
-	override fun calculateStressApplied(): Float {
-		val cfg = Config.SERVER.DEPOSIT_DRILL
-		val lubeReduction: Float = if (getLubricantFactor() > 0f) 1f - cfg.lubeStressReduction else 1f
-		return cfg.baseImpact * (1f + lastHardness * cfg.hardnessStressMult) * lubeReduction
-	}
+	override fun calculateStressApplied(): Float = Config.SERVER.DEPOSIT_DRILL.stressPerRpm
 
 	fun getBlockHardness(blockState: BlockState?): Float {
 		return blockState?.blockHolder?.getData(DEPOSIT_DATA)?.hardness ?: 1.0f
@@ -687,7 +689,7 @@ class DepositDrillBlockEntity(
 		// only shown while actually overheating, and spells out what it's costing you
 		if (overheat > 0f) {
 			val slower: Int = (overheat * cfg.overheatSlowdown * 100f).toInt()
-			translate("tooltip.drill.overheat", slower, overheat * cfg.maxTipWearPerTick)
+			translate("tooltip.drill.overheat", slower, getTipWearPerTick())
 				.style(ChatFormatting.RED)
 				.forGoggles(tooltip)
 		}
@@ -736,7 +738,7 @@ class DepositDrillBlockEntity(
 		)
 
 		// stress and output count, no comparator output
-		translate("tooltip.drill.stress", calculateStressApplied().toInt(), speed.toInt())
+		translate("tooltip.drill.stress", (calculateStressApplied() * abs(speed)).toInt(), speed.toInt())
 			.style(ChatFormatting.GRAY)
 			.forGoggles(tooltip)
 		translate("tooltip.drill.output", getOutputCount(), itemHandler.slots * 64)

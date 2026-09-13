@@ -1,6 +1,7 @@
 package com.createcivilization.create_ore_deposits.registry.block
 
 import com.createcivilization.create_ore_deposits.CreateOreDeposits.REGISTRATE
+import com.createcivilization.create_ore_deposits.config.Config
 import com.createcivilization.create_ore_deposits.registry.block.entries.cast.CastBlock
 import com.createcivilization.create_ore_deposits.registry.block.entries.deposit_drill.DepositDrillBlock
 import com.createcivilization.create_ore_deposits.registry.tag.CreateOreDepositsTags
@@ -28,6 +29,7 @@ import net.minecraft.world.level.material.MapColor
 import net.minecraft.world.level.storage.loot.LootPool
 import net.minecraft.world.level.storage.loot.LootTable
 import net.minecraft.world.level.storage.loot.entries.LootItem
+import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction
 import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue
 
@@ -39,7 +41,9 @@ data object CreateOreDepositsBlocks {
 		.properties { it.mapColor(MapColor.PODZOL).noOcclusion() }
 		.transform(axeOrPickaxe())
 		.onRegister(movementBehaviour(DrillMovementBehaviour()))
-		.onRegister { block -> BlockStressValues.IMPACTS.register(block) { 100.0 } }
+		.onRegister { block ->
+			BlockStressValues.IMPACTS.register(block) { Config.SERVER.DEPOSIT_DRILL.stressPerRpm.toDouble() }
+		}
 		.item()
 		.transform(customItemModel())
 		.register()
@@ -74,19 +78,48 @@ data object CreateOreDepositsBlocks {
 		.simpleItem()
 		.register()
 
-	// TEMP LOOT VALUES, CHANGE LATER.
-	// Deposits
-	val EXAMPLE_DEPOSIT: BlockEntry<Block> = registerDepositGuaranteed("example_deposit", Blocks.STONE, Items.NETHERITE_BLOCK)
-	val COAL_ORE_DEPOSIT: BlockEntry<Block> = registerDeposit("coal_ore_deposit", Blocks.COAL_ORE, CreateOreDepositsItems.UNREFINED_COAL_ORE, 3f, 0.8f)
-	val IRON_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll("iron_ore_deposit", Blocks.IRON_ORE, CreateOreDepositsItems.UNREFINED_IRON_ORE, 0.8f)
-	val GOLD_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll("gold_ore_deposit", Blocks.GOLD_ORE, CreateOreDepositsItems.UNREFINED_GOLD_ORE, 0.6f, false, CreateOreDepositsTags.NEEDS_GOLD_TIP)
-	val COPPER_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll("copper_ore_deposit", Blocks.COPPER_ORE, CreateOreDepositsItems.UNREFINED_COPPER_ORE, 0.8f)
+	// DEPOSIT LOOT:
+	// Hardcoded. One row per ore, columns always in this order:
+	//   rolls  - roll attempts per deposit block (whole numbers only)
+	//   chance - odds that one roll drops anything (0.0 - 1.0)
+	//   count  - items handed out per successful roll
+	//   pillar - true only for deposits that render as a pillar (netherite)
+	//   tip    - lowest drill tip tier that can mine it (tag)
+	//
+	// Yield per block = maxAttempts x rolls x chance x count.
+	// maxAttempts / hardness live in DataMapProvider.kt (DEPOSIT_DATA).
+
+
+	val EXAMPLE_DEPOSIT: BlockEntry<Block> = registerDepositGuaranteed("example_deposit", Blocks.STONE, Items.NETHERITE_BLOCK) // dev block
+
+	val COAL_ORE_DEPOSIT: BlockEntry<Block> = registerDeposit(
+		"coal_ore_deposit", Blocks.COAL_ORE, CreateOreDepositsItems.UNREFINED_COAL_ORE,
+		3f, 0.60f, 1) // bulk fuel, three rolls
+	val IRON_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"iron_ore_deposit", Blocks.IRON_ORE, CreateOreDepositsItems.UNREFINED_IRON_ORE,
+		0.75f, 2) // core metal, two each
+	val COPPER_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"copper_ore_deposit", Blocks.COPPER_ORE, CreateOreDepositsItems.UNREFINED_COPPER_ORE,
+		0.70f, 2) // early metal, two each
+	val QUARTZ_ORE_DEPOSIT: BlockEntry<Block> = registerDeposit(
+		"quartz_ore_deposit", Blocks.NETHER_QUARTZ_ORE, CreateOreDepositsItems.UNREFINED_QUARTZ_ORE,
+		1f, 0.50f, 2) // utility, two each
+	val LAPIS_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"lapis_ore_deposit", Blocks.LAPIS_ORE, CreateOreDepositsItems.UNREFINED_LAPIS_ORE,
+		0.65f, 1) // utility, single
 //	val REDSTONE_ORE_DEPOSIT: BlockEntry<Block> = registerDeposit("redstone_ore_deposit", Blocks.REDSTONE_ORE, Items.REDSTONE_ORE)
-	val LAPIS_ORE_DEPOSIT: BlockEntry<Block> = registerDepositGuaranteed("lapis_ore_deposit", Blocks.LAPIS_ORE, CreateOreDepositsItems.UNREFINED_LAPIS_ORE)
-	val DIAMOND_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll("diamond_ore_deposit", Blocks.DIAMOND_ORE, CreateOreDepositsItems.UNREFINED_DIAMOND_ORE, 0.2f, false, CreateOreDepositsTags.NEEDS_STEEL_TIP)
-	val EMERALD_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll("emerald_ore_deposit", Blocks.EMERALD_ORE, CreateOreDepositsItems.UNREFINED_EMERALD_ORE, 0.1f, false, CreateOreDepositsTags.NEEDS_STEEL_TIP)
-	val QUARTZ_ORE_DEPOSIT: BlockEntry<Block> = registerDeposit("quartz_ore_deposit", Blocks.NETHER_QUARTZ_ORE, CreateOreDepositsItems.UNREFINED_QUARTZ_ORE, 2f, 0.9f)
-	val NETHERITE_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll("netherite_ore_deposit", Blocks.ANCIENT_DEBRIS, Items.ANCIENT_DEBRIS, 1f, true, CreateOreDepositsTags.NEEDS_DIAMOND_TIP)
+	val GOLD_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"gold_ore_deposit", Blocks.GOLD_ORE, CreateOreDepositsItems.UNREFINED_GOLD_ORE,
+		0.50f, 1, false, CreateOreDepositsTags.NEEDS_GOLD_TIP) // tier 2 metal
+	val DIAMOND_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"diamond_ore_deposit", Blocks.DIAMOND_ORE, CreateOreDepositsItems.UNREFINED_DIAMOND_ORE,
+		0.06f, 3, false, CreateOreDepositsTags.NEEDS_STEEL_TIP) // rare, three each
+	val EMERALD_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"emerald_ore_deposit", Blocks.EMERALD_ORE, CreateOreDepositsItems.UNREFINED_EMERALD_ORE,
+		0.05f, 2, false, CreateOreDepositsTags.NEEDS_STEEL_TIP) // rare, two each
+	val NETHERITE_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"netherite_ore_deposit", Blocks.ANCIENT_DEBRIS, Items.ANCIENT_DEBRIS,
+		0.07f, 1, true, CreateOreDepositsTags.NEEDS_DIAMOND_TIP)
 //	val ZINC_ORE_DEPOSIT: BlockEntry<Block> = registerDeposit("zinc_ore_deposit", AllBlocks.ZINC_ORE.get(), CreateOreDepositsItems.UNREFINED_ZINC)
 
 	private fun registerCast(blockName: String): BlockEntry<CastBlock> = REGISTRATE.block(blockName, ::CastBlock)
@@ -104,16 +137,17 @@ data object CreateOreDepositsBlocks {
 		ore: ItemLike,
 		isRotatedPillar: Boolean = false,
 		vararg requiredTipTags: TagKey<Block>
-	): BlockEntry<Block> = registerDepositSingleRoll(blockName, block, ore, 1f, isRotatedPillar, *requiredTipTags)
+	): BlockEntry<Block> = registerDepositSingleRoll(blockName, block, ore, 1f, 1, isRotatedPillar, *requiredTipTags)
 
 	fun registerDepositSingleRoll(
 		blockName: String,
 		block: Block,
 		ore: ItemLike,
 		chance: Float,
+		count: Int = 1,
 		isRotatedPillar: Boolean = false,
 		vararg requiredTipTags: TagKey<Block>
-	): BlockEntry<Block> = registerDeposit(blockName, block, ore, 1f, chance, isRotatedPillar, *requiredTipTags)
+	): BlockEntry<Block> = registerDeposit(blockName, block, ore, 1f, chance, count, isRotatedPillar, *requiredTipTags)
 
 	fun registerDeposit(
 		blockName: String,
@@ -121,6 +155,7 @@ data object CreateOreDepositsBlocks {
 		ore: ItemLike,
 		rolls: Float,
 		chance: Float,
+		count: Int = 1,
 		isRotatedPillar: Boolean = false,
 		vararg requiredTipTags: TagKey<Block>
 	): BlockEntry<Block> {
@@ -150,6 +185,7 @@ data object CreateOreDepositsBlocks {
 								.add(
 									LootItem.lootTableItem(ore)
 										.`when`(LootItemRandomChanceCondition.randomChance(chance))
+										.apply(SetItemCountFunction.setCount(ConstantValue.exactly(count.toFloat())))
 								)
 						)
 				)

@@ -8,8 +8,15 @@
           "type": "minecraft:item",
           "conditions": [
             {
-              "chance": 1.0,
+              "chance": 0.65,
               "condition": "minecraft:random_chance"
+            }
+          ],
+          "functions": [
+            {
+              "add": false,
+              "count": 1.0,
+              "function": "minecraft:set_count"
             }
           ],
           "name": "create_ore_deposits:unrefined_lapis_ore"

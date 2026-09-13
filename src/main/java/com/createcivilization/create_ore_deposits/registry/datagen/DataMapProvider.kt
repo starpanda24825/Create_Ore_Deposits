@@ -19,19 +19,29 @@ class DataMapProvider(
 ) : DataMapProvider(packOutput, lookupProvider) {
 
 	override fun gather(provider: HolderLookup.Provider) {
-		// Retuned for Answer 1A: finite veins, ~20 ores/min with fluids @128 RPM.
-		// maxAttempts/hardness/requiredTier — the old values were inverted (coal 1000 vs diamond 50).
+		// PER-ORE DRILL BALANCE
+		// Hardcoded. One row per ore, columns always in this order:
+		// DepositData(maxAttempts, hardness, requiredTier)
+		// maxAttempts   - extraction attempts one deposit block is worth
+		// hardness      - slows the interval and adds heat (hardnessTickPenalty)
+		// requiredTier  - lowest drill tip tier that can mine it
+		//
+		// Yield per block = maxAttempts x rolls x chance x count.
+		// rolls / chance / count live in CreateOreDepositsBlocks.kt (deposit loot).
+
+
 		builder(CreateOreDepositsDataMaps.DEPOSIT_DATA)
-			.add(CreateOreDepositsBlocks.EXAMPLE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(20, 1.0f, 1), false)
-			.add(CreateOreDepositsBlocks.COAL_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(120, 1.2f, 1), false)
-			.add(CreateOreDepositsBlocks.COPPER_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(140, 1.4f, 1), false)
-			.add(CreateOreDepositsBlocks.IRON_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(180, 1.8f, 1), false)
-			.add(CreateOreDepositsBlocks.QUARTZ_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(110, 1.5f, 1), false)
-			.add(CreateOreDepositsBlocks.LAPIS_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(100, 1.6f, 1), false)
-			.add(CreateOreDepositsBlocks.GOLD_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(160, 2.6f, 2), false)
-			.add(CreateOreDepositsBlocks.DIAMOND_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(80, 3.4f, 3), false)
-			.add(CreateOreDepositsBlocks.EMERALD_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(60, 3.0f, 3), false)
-			.add(CreateOreDepositsBlocks.NETHERITE_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(70, 5.0f, 4), false)
+			//                          maxAtt  hardness  tier
+			.add(CreateOreDepositsBlocks.EXAMPLE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(20, 1.0f, 1), false) // dev block
+			.add(CreateOreDepositsBlocks.COAL_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.2f, 1), false) // bulk fuel
+			.add(CreateOreDepositsBlocks.IRON_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(8, 1.8f, 1), false) // core metal
+			.add(CreateOreDepositsBlocks.COPPER_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.4f, 1), false) // early metal
+			.add(CreateOreDepositsBlocks.QUARTZ_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.5f, 1), false) // utility
+			.add(CreateOreDepositsBlocks.LAPIS_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.6f, 1), false) // utility
+			.add(CreateOreDepositsBlocks.GOLD_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 2.6f, 2), false) // tier 2 metal
+			.add(CreateOreDepositsBlocks.DIAMOND_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(10, 3.4f, 3), false) // rare
+			.add(CreateOreDepositsBlocks.EMERALD_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(8, 3.0f, 3), false) // rare
+			.add(CreateOreDepositsBlocks.NETHERITE_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(12, 5.0f, 4), false) // endgame
 
 		builder(CreateOreDepositsDataMaps.COOLING_FACTOR_DATA)
 			.add(FluidTags.WATER, CreateOreDepositsDataMaps.CoolingFactorData(1.8f), false)

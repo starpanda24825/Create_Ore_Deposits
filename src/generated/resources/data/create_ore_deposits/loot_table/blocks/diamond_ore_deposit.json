@@ -8,8 +8,15 @@
           "type": "minecraft:item",
           "conditions": [
             {
-              "chance": 0.2,
+              "chance": 0.06,
               "condition": "minecraft:random_chance"
+            }
+          ],
+          "functions": [
+            {
+              "add": false,
+              "count": 3.0,
+              "function": "minecraft:set_count"
             }
           ],
           "name": "create_ore_deposits:unrefined_diamond_ore"

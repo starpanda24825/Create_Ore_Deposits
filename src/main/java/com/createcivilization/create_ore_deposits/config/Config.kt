@@ -71,36 +71,51 @@ data object Config {
 				.defineInRange("coolantCoolingMult", 0.03, 0.0, 1.0)
 			inline val coolantCoolingMult: Float get() = _coolantCoolingMult.get().toFloat()
 
-// Extraction pacing (ticks per simulated loot roll)
+// Extraction pacing (ticks per simulated loot roll). one shared block for every ore.
+// how the interval is built, all in ticks:
+//   interval = baseExtractionInterval
+//            - round(speed * (speedFactor + lubricantFactor * lubeTickBonus))
+//            + round(hardness * hardnessTickPenalty)
+//   then x (1 + overheat * overheatSlowdown) and x (1 + tipWear * wornTipSlowdown)
+//   and finally clamped between minInterval and maxInterval.
+// per-ore values live in DataMapProvider.kt (DEPOSIT_DATA, maxAttempts/hardness).
 			@PublishedApi
 			internal val _baseExtractionInterval: ModConfigSpec.IntValue = builder
-				.comment("Base ticks per extraction attempt. Tune down to ~220-260 for the ~20 ores/min target @128 RPM with fluids.")
-				.defineInRange("baseExtractionInterval", 320, 1, 5000)
+				.comment(
+					"Ticks per attempt before speed and hardness are applied.",
+					"240 is the reference pace every ore is tuned around: raise to slow the whole mod, lower to speed it up."
+				)
+				.defineInRange("baseExtractionInterval", 240, 1, 5000) // reference pace
 			inline val baseExtractionInterval: Int get() = _baseExtractionInterval.get()
 
 			@PublishedApi
 			internal val _speedFactor: ModConfigSpec.DoubleValue = builder
-				.defineInRange("speedFactor", 0.95, 0.0, 10.0)
+				.comment("Ticks removed per RPM. 0.50 keeps a single RPM step from swamping the base value.")
+				.defineInRange("speedFactor", 0.50, 0.0, 10.0) // speed reward
 			inline val speedFactor: Float get() = _speedFactor.get().toFloat()
 
 			@PublishedApi
 			internal val _hardnessTickPenalty: ModConfigSpec.IntValue = builder
-				.defineInRange("hardnessTickPenalty", 28, 0, 500)
+				.comment("Extra ticks per attempt for each point of deposit hardness. Harder ores bite slower.")
+				.defineInRange("hardnessTickPenalty", 24, 0, 500) // hardness cost
 			inline val hardnessTickPenalty: Int get() = _hardnessTickPenalty.get()
 
 			@PublishedApi
 			internal val _lubeTickBonus: ModConfigSpec.DoubleValue = builder
-				.defineInRange("lubeTickBonus", 0.35, 0.0, 5.0)
+				.comment("Extra ticks removed per RPM per point of lubricant factor. At factor 2.5 lubricant roughly doubles extraction speed.")
+				.defineInRange("lubeTickBonus", 0.20, 0.0, 5.0) // lube reward
 			inline val lubeTickBonus: Float get() = _lubeTickBonus.get().toFloat()
 
 			@PublishedApi
 			internal val _minInterval: ModConfigSpec.IntValue = builder
-				.defineInRange("minInterval", 12, 1, 1000)
+				.comment("Fastest allowed interval. 40 ticks = 30 attempts/min; the ceiling that stops high RPM from blowing the rates up.")
+				.defineInRange("minInterval", 40, 1, 1000) // speed ceiling
 			inline val minInterval: Int get() = _minInterval.get()
 
 			@PublishedApi
 			internal val _maxInterval: ModConfigSpec.IntValue = builder
-				.defineInRange("maxInterval", 600, 1, 10000)
+				.comment("Slowest allowed interval, for parked or badly overheating drills.")
+				.defineInRange("maxInterval", 600, 1, 10000) // slowest pace
 			inline val maxInterval: Int get() = _maxInterval.get()
 
 // Fluid consumption (fluids are optional but help a lot with heat; consumed while mining)
@@ -149,9 +164,18 @@ data object Config {
 
 			@PublishedApi
 			internal val _maxTipWearPerTick: ModConfigSpec.DoubleValue = builder
-				.comment("Tip durability lost per tick at full overheat. Fractional values accumulate. 0 disables tip wear.")
+				.comment("Base tip durability lost per tick at full overheat, before the overheat boost below.")
 				.defineInRange("maxTipWearPerTick", 0.15, 0.0, 100.0)
 			inline val maxTipWearPerTick: Float get() = _maxTipWearPerTick.get().toFloat()
+
+			@PublishedApi
+			internal val _overheatTipWearBoost: ModConfigSpec.DoubleValue = builder
+				.comment(
+					"Extra tip wear that scales with how deep you are into overheat, so running hot costs more.",
+					"Final wear = maxTipWearPerTick * overheat * (1 + overheat * this). 0.5 -> 1.5x at full overheat."
+				)
+				.defineInRange("overheatTipWearBoost", 0.5, 0.0, 100.0) // overheat penalty
+			inline val overheatTipWearBoost: Float get() = _overheatTipWearBoost.get().toFloat()
 
 			@PublishedApi
 			internal val _wornTipSlowdown: ModConfigSpec.DoubleValue = builder
@@ -161,19 +185,13 @@ data object Config {
 
 // Stress
 			@PublishedApi
-			internal val _baseImpact: ModConfigSpec.DoubleValue = builder
-				.defineInRange("baseImpact", 48.0, 0.0, 10000.0)
-			inline val baseImpact: Float get() = _baseImpact.get().toFloat()
-
-			@PublishedApi
-			internal val _hardnessStressMult: ModConfigSpec.DoubleValue = builder
-				.defineInRange("hardnessStressMult", 0.45, 0.0, 10.0)
-			inline val hardnessStressMult: Float get() = _hardnessStressMult.get().toFloat()
-
-			@PublishedApi
-			internal val _lubeStressReduction: ModConfigSpec.DoubleValue = builder
-				.defineInRange("lubeStressReduction", 0.25, 0.0, 1.0)
-			inline val lubeStressReduction: Float get() = _lubeStressReduction.get().toFloat()
+			internal val _stressPerRpm: ModConfigSpec.DoubleValue = builder
+				.comment(
+					"Stress drawn per RPM, in SU. Create multiplies it by the drill's speed.",
+					"3906.25 -> 500,000 SU @ 128 RPM and 1,000,000 SU @ 256 RPM."
+				)
+				.defineInRange("stressPerRpm", 3906.25, 0.0, 1000000.0)
+			inline val stressPerRpm: Float get() = _stressPerRpm.get().toFloat()
 
 			@PublishedApi
 			internal val _maxDrillDepth: ModConfigSpec.IntValue = builder

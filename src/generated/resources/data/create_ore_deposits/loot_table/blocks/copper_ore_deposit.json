@@ -8,8 +8,15 @@
           "type": "minecraft:item",
           "conditions": [
             {
-              "chance": 0.8,
+              "chance": 0.7,
               "condition": "minecraft:random_chance"
+            }
+          ],
+          "functions": [
+            {
+              "add": false,
+              "count": 2.0,
+              "function": "minecraft:set_count"
             }
           ],
           "name": "create_ore_deposits:unrefined_copper_ore"
