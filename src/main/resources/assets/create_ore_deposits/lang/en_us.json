@@ -131,10 +131,7 @@
 	"create_ore_deposits.tooltip.drill.fluid.coolant": "Coolant: %1$s %2$s/%3$s (%4$sx cooling)",
 	"create_ore_deposits.tooltip.drill.fluid.coolant.missing": "Coolant: none — heat builds up faster",
 	"create_ore_deposits.tooltip.drill.stress": "Stress: %1$s SU @ %2$s RPM",
-	"create_ore_deposits.tooltip.drill.output": "Output: %1$s/%2$s (9 slots)",
-	"create_ore_deposits.tooltip.drill.hint": "Top=Lube Back=Coolant",
-	"create_ore_deposits.tooltip.drill.hint2": "Left=Output Side=Shaft",
-	"create_ore_deposits.tooltip.drill.hint3": "Fluids optional — they fight heat",
+	"create_ore_deposits.tooltip.drill.output": "Output: %1$s/%2$s items",
 
 	"create_ore_deposits.ponder.drill.intro.text_1": "This is a Drill. It Drills.",
 	"create_ore_deposits.ponder.drill.intro.text_2": "This is the deposit. This is what the Drill drills.",

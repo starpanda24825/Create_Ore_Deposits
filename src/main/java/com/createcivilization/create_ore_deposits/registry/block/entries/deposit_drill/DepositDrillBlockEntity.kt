@@ -33,6 +33,10 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
 import net.minecraft.util.Mth
+import net.minecraft.world.MenuProvider
+import net.minecraft.world.entity.player.Inventory
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -68,7 +72,7 @@ class DepositDrillBlockEntity(
 	type: BlockEntityType<*>,
 	pos: BlockPos,
 	blockState: BlockState
-) : BlockBreakingKineticBlockEntity(type, pos, blockState) {
+) : BlockBreakingKineticBlockEntity(type, pos, blockState), MenuProvider {
 
 	private var drillOffset: Float = 0f
 	private var lerpedOffset: LerpedFloat = LerpedFloat.linear().startWithValue(MIN_LERP)
@@ -91,7 +95,11 @@ class DepositDrillBlockEntity(
 	private val bfsPositions: MutableList<BlockPos> = ArrayList(256)
 	private val bfsQueue: ArrayDeque<BlockPos> = ArrayDeque(256)
 
-	private val itemHandler = ItemStackHandler(9)
+	private val itemHandler = object : ItemStackHandler(9) {
+		override fun onContentsChanged(slot: Int) {
+			notifyUpdate()
+		}
+	}
 	private val drillTipHandler = ItemStackHandler()
 
 	private val lubricantHandler = FluidHandler(
@@ -745,17 +753,6 @@ class DepositDrillBlockEntity(
 			.style(ChatFormatting.GRAY)
 			.forGoggles(tooltip)
 
-		// Physical I/O hint. one long line before, split so it stays on screen
-		translate("tooltip.drill.hint")
-			.style(ChatFormatting.DARK_GRAY)
-			.forGoggles(tooltip)
-		translate("tooltip.drill.hint2")
-			.style(ChatFormatting.DARK_GRAY)
-			.forGoggles(tooltip)
-		translate("tooltip.drill.hint3")
-			.style(ChatFormatting.DARK_GRAY)
-			.forGoggles(tooltip)
-
 		return super.addToGoggleTooltip(tooltip, isPlayerSneaking)
 	}
 
@@ -896,4 +893,10 @@ class DepositDrillBlockEntity(
 		dir == blockState.getValue(BlockStateProperties.HORIZONTAL_FACING).opposite -> coolantHandler
 		else -> null
 	}
+
+	override fun getDisplayName(): Component =
+		Component.translatable("block.create_ore_deposits.deposit_drill")
+
+	override fun createMenu(windowId: Int, inventory: Inventory, player: Player): AbstractContainerMenu =
+		DepositDrillMenu.server(windowId, inventory, worldPosition, itemHandler)
 }

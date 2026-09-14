@@ -8,6 +8,7 @@
 		"create_ore_deposits:casted_copper",
 		"create_ore_deposits:casted_brass",
 		"create_ore_deposits:casted_steel",
-		"create_ore_deposits:casted_netherite"
+		"create_ore_deposits:casted_netherite",
+		"create_ore_deposits:deposit_drill"
 	]
 }

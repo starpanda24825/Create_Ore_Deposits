@@ -4,7 +4,7 @@
 	"textures": {
 		"2": "create_ore_deposits:block/drill/drill_pulley",
 		"3": "create_ore_deposits:block/drill/pump",
-		"particle": "create:block/fluid_tank_inner"
+		"particle": "create_ore_deposits:block/drill/drill_pulley"
 	},
 	"elements": [
 		{

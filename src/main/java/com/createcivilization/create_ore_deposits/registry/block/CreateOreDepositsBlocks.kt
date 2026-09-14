@@ -11,8 +11,7 @@ import com.simibubi.create.api.stress.BlockStressValues
 import com.simibubi.create.content.kinetics.drill.DrillMovementBehaviour
 import com.simibubi.create.foundation.data.ModelGen.customItemModel
 
-import com.simibubi.create.foundation.data.SharedProperties
-import com.simibubi.create.foundation.data.TagGen.axeOrPickaxe
+import com.simibubi.create.foundation.data.TagGen.pickaxeOnly
 import com.tterrag.registrate.providers.loot.RegistrateBlockLootTables
 
 import net.minecraft.tags.TagKey
@@ -25,7 +24,6 @@ import net.minecraft.world.level.ItemLike
 import net.minecraft.world.level.block.RotatedPillarBlock
 import net.minecraft.world.level.block.SoundType
 import net.minecraft.world.level.block.state.BlockBehaviour
-import net.minecraft.world.level.material.MapColor
 import net.minecraft.world.level.storage.loot.LootPool
 import net.minecraft.world.level.storage.loot.LootTable
 import net.minecraft.world.level.storage.loot.entries.LootItem
@@ -37,9 +35,9 @@ data object CreateOreDepositsBlocks {
 
 	@JvmField
 	val DRILL_BLOCK: BlockEntry<DepositDrillBlock> = REGISTRATE.block("deposit_drill", ::DepositDrillBlock)
-		.initialProperties(SharedProperties::stone)
-		.properties { it.mapColor(MapColor.PODZOL).noOcclusion() }
-		.transform(axeOrPickaxe())
+		.initialProperties { Blocks.IRON_BLOCK }
+		.properties { it.noOcclusion() }
+		.transform(pickaxeOnly())
 		.onRegister(movementBehaviour(DrillMovementBehaviour()))
 		.onRegister { block ->
 			BlockStressValues.IMPACTS.register(block) { Config.SERVER.DEPOSIT_DRILL.stressPerRpm.toDouble() }

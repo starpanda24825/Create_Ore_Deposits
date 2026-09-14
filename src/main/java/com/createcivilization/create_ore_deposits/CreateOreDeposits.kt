@@ -3,6 +3,7 @@ package com.createcivilization.create_ore_deposits
 
 import com.createcivilization.create_ore_deposits.config.Config
 import com.createcivilization.create_ore_deposits.registry.block.CreateOreDepositsBlockEntities
+import com.createcivilization.create_ore_deposits.registry.block.entries.deposit_drill.DepositDrillMenus
 import com.createcivilization.create_ore_deposits.registry.block.CreateOreDepositsBlocks
 import com.createcivilization.create_ore_deposits.registry.datamap.CreateOreDepositsDataMaps
 import com.createcivilization.create_ore_deposits.registry.fluid.CreateOreDepositsFluids
@@ -59,6 +60,7 @@ data object CreateOreDeposits {
 		CreateOreDepositsItems
 		CreateOreDepositsBlocks
 		CreateOreDepositsBlockEntities
+		DepositDrillMenus
 		CreateOreDepositsFluids
 		CreateOreDepositsTags
 		CreateOreDepositsDataMaps

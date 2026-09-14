@@ -2,6 +2,7 @@ package com.createcivilization.create_ore_deposits.registry.block.entries.deposi
 
 import com.createcivilization.create_ore_deposits.registry.block.CreateOreDepositsBlockEntities
 import com.createcivilization.create_ore_deposits.registry.tag.CreateOreDepositsTags
+import com.simibubi.create.content.equipment.wrench.IWrenchable
 import com.simibubi.create.content.kinetics.base.HorizontalKineticBlock
 import com.simibubi.create.foundation.block.IBE
 import net.minecraft.core.BlockPos
@@ -11,7 +12,6 @@ import net.minecraft.world.InteractionResult
 import net.minecraft.world.ItemInteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.level.BlockGetter
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.LevelReader
 import net.minecraft.world.level.block.Block
@@ -20,9 +20,11 @@ import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import net.neoforged.neoforge.items.IItemHandler
-import java.util.function.Function
 
-class DepositDrillBlock(properties: Properties) : HorizontalKineticBlock(properties), IBE<DepositDrillBlockEntity> {
+class DepositDrillBlock(properties: Properties) :
+	HorizontalKineticBlock(properties),
+	IBE<DepositDrillBlockEntity>,
+	IWrenchable {
 
 	override fun getBlockEntityClass(): Class<DepositDrillBlockEntity> = DepositDrillBlockEntity::class.java
 
@@ -63,14 +65,6 @@ class DepositDrillBlock(properties: Properties) : HorizontalKineticBlock(propert
 		super.onRemove(state, level, pos, newState, movedByPiston)
 	}
 
-	override fun onBlockEntityUse(
-		world: BlockGetter,
-		pos: BlockPos,
-		action: Function<DepositDrillBlockEntity, InteractionResult>
-	): InteractionResult =
-		if (!world.getBlockEntity(pos)!!.level!!.isClientSide) InteractionResult.SUCCESS
-		else super.onBlockEntityUse(world, pos, action)
-
 	override fun useItemOn(
 		stack: ItemStack,
 		state: BlockState,
@@ -81,29 +75,50 @@ class DepositDrillBlock(properties: Properties) : HorizontalKineticBlock(propert
 		hitResult: BlockHitResult
 	): ItemInteractionResult {
 
+		if (!stack.tags.anyMatch(CreateOreDepositsTags.DRILL_TIP::equals))
+			return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+
+		val be = level.getBlockEntity(pos) as? DepositDrillBlockEntity
+			?: return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+		val drillTipHandler: IItemHandler = be.getDrillTipItemHandler()
+		if (!drillTipHandler.getStackInSlot(0).isEmpty)
+			return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+
 		if (level.isClientSide) return ItemInteractionResult.SUCCESS
+
+		val newItemStack = ItemStack(stack.item, 1)
+		stack.consume(1, player)
+		drillTipHandler.insertItem(0, newItemStack, false)
+		be.notifyUpdate()
+		return ItemInteractionResult.SUCCESS
+	}
+
+	// empty handed interaction: an open hand opens the drill's storage, sneak + open hand pops the tip back out.
+	override fun useWithoutItem(
+		state: BlockState,
+		level: Level,
+		pos: BlockPos,
+		player: Player,
+		hitResult: BlockHitResult
+	): InteractionResult {
+
+		if (!player.mainHandItem.isEmpty || !player.offhandItem.isEmpty) return InteractionResult.PASS
+
+		if (level.isClientSide) return InteractionResult.SUCCESS
 
 		withBlockEntityDo(level, pos) { be ->
 			val drillTipHandler: IItemHandler = be.getDrillTipItemHandler()
-			if (player.mainHandItem.isEmpty) {
-				if (drillTipHandler.getStackInSlot(0).isEmpty) {
-					return@withBlockEntityDo
-				}
+
+			if (player.isShiftKeyDown) {
+				if (drillTipHandler.getStackInSlot(0).isEmpty) return@withBlockEntityDo
 				player.setItemInHand(InteractionHand.MAIN_HAND, drillTipHandler.getStackInSlot(0).copy())
 				drillTipHandler.extractItem(0, 1, false)
 				be.notifyUpdate()
 				return@withBlockEntityDo
 			}
 
-			if (drillTipHandler.getStackInSlot(0).isEmpty && stack.tags.anyMatch(CreateOreDepositsTags.DRILL_TIP::equals)) {
-				val newItemStack = ItemStack(stack.item, 1)
-				stack.consume(1, player)
-				drillTipHandler.insertItem(0, newItemStack, false)
-				be.notifyUpdate()
-				return@withBlockEntityDo
-			}
+			player.openMenu(be) { buffer -> buffer.writeBlockPos(pos) }
 		}
-
-		return ItemInteractionResult.SUCCESS
+		return InteractionResult.SUCCESS
 	}
 }
