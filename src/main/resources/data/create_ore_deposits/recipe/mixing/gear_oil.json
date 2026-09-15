@@ -1,0 +1,23 @@
+{
+	"type": "create:mixing",
+	"heat_requirement": "none",
+	"ingredients": [
+		{
+			"item": "minecraft:redstone"
+		},
+		{
+			"item": "create_ore_deposits:lapis_dough"
+		},
+		{
+			"type": "fluid_stack",
+			"amount": 1000,
+			"fluid": "create_ore_deposits:beeswax_grease"
+		}
+	],
+	"results": [
+		{
+			"amount": 1000,
+			"id": "create_ore_deposits:gear_oil"
+		}
+	]
+}

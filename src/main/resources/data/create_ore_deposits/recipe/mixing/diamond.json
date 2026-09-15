@@ -1,0 +1,33 @@
+{
+	"type": "create:mixing",
+	"heat_requirement": "heated",
+	"ingredients": [
+		{
+			"item": "create_ore_deposits:diamond_ore_chunks"
+		},
+		{
+			"item": "create_ore_deposits:ferrosilicon_powder"
+		},
+		{
+			"item": "create_ore_deposits:ferrosilicon_powder"
+		},
+		{
+			"item": "create_ore_deposits:quartz_shards"
+		},
+		{
+			"type": "fluid_stack",
+			"amount": 250,
+			"fluid": "minecraft:water"
+		}
+	],
+	"results": [
+		{
+			"count": 1,
+			"id": "minecraft:diamond"
+		},
+		{
+			"amount": 50,
+			"id": "create_ore_deposits:waste_slurry"
+		}
+	]
+}

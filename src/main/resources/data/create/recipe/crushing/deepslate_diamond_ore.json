@@ -1,0 +1,10 @@
+{
+	"type": "create:crushing",
+	"ingredients": [
+		{
+			"item": "minecraft:deepslate_diamond_ore"
+		}
+	],
+	"processing_time": 450,
+	"results": []
+}

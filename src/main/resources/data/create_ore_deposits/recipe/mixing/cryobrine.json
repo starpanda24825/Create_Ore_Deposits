@@ -1,0 +1,20 @@
+{
+	"type": "create:mixing",
+	"heat_requirement": "none",
+	"ingredients": [
+		{
+			"item": "minecraft:packed_ice"
+		},
+		{
+			"type": "fluid_stack",
+			"amount": 1000,
+			"fluid": "create_ore_deposits:frostbrine"
+		}
+	],
+	"results": [
+		{
+			"amount": 1000,
+			"id": "create_ore_deposits:cryobrine"
+		}
+	]
+}

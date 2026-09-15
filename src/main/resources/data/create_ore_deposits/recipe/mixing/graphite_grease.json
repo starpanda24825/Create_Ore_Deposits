@@ -1,0 +1,20 @@
+{
+	"type": "create:mixing",
+	"heat_requirement": "none",
+	"ingredients": [
+		{
+			"item": "create_ore_deposits:coal_rocks"
+		},
+		{
+			"type": "fluid_stack",
+			"amount": 1000,
+			"fluid": "create_ore_deposits:gear_oil"
+		}
+	],
+	"results": [
+		{
+			"amount": 1000,
+			"id": "create_ore_deposits:graphite_grease"
+		}
+	]
+}
