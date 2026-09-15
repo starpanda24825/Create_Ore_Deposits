@@ -3,6 +3,7 @@ package com.createcivilization.create_ore_deposits
 import com.createcivilization.create_ore_deposits.ponder.CODPonderPlugin
 import com.createcivilization.create_ore_deposits.registry.block.entries.deposit_drill.DepositDrillBlockModels
 import com.createcivilization.create_ore_deposits.registry.block.entries.deposit_drill.DepositDrillBlockModel
+import com.createcivilization.create_ore_deposits.registry.fluid.FluidTierTooltips
 import com.createcivilization.create_ore_deposits.util.logI
 import com.createcivilization.create_ore_deposits.util.asResource
 
@@ -14,6 +15,7 @@ import net.neoforged.fml.common.Mod
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
 import net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterLayerDefinitions
 
+import thedarkcolour.kotlinforforge.neoforge.forge.FORGE_BUS
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 
 @Mod(value = CreateOreDeposits.MOD_ID, dist = [Dist.CLIENT])
@@ -29,6 +31,7 @@ data object CreateOreDepositsClient {
 		logI("In client init!")
 		DepositDrillBlockModels
 		PonderIndex.addPlugin(CODPonderPlugin)
+		FORGE_BUS.register(FluidTierTooltips)
 	}
 
 	fun onRegisterLayerDefinitions(event: RegisterLayerDefinitions) {

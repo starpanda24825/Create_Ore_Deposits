@@ -44,6 +44,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.properties.BlockStateProperties
+import net.minecraft.world.level.material.Fluid
 import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction
@@ -104,18 +105,13 @@ class DepositDrillBlockEntity(
 
 	private val lubricantHandler = FluidHandler(
 		1000,
-		mutableSetOf(
-			CreateOreDepositsFluids.LUBRICANT.get(),
-			CreateOreDepositsFluids.LUBRICANT.get().source
-		)
+		CreateOreDepositsFluids.fluidsOf(CreateOreDepositsFluids.LUBRICANTS)
 	)
 
 	private val coolantHandler = FluidHandler(
 		1000,
-		mutableSetOf(
-			Fluids.WATER,
-			Fluids.FLOWING_WATER
-		)
+		mutableSetOf<Fluid>(Fluids.WATER, Fluids.FLOWING_WATER)
+			.also { it.addAll(CreateOreDepositsFluids.fluidsOf(CreateOreDepositsFluids.COOLANTS)) }
 	)
 
 	override fun tick() {

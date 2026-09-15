@@ -23,8 +23,8 @@ This mod aims to add drills and deposits to allow for a more fair way to get lar
 - [x] Crafting recipes for drills and tips.
 
 ### Fluids
-- [ ] Tiered lubricants.
-- [ ] Tiered coolants.
+- [x] Tiered lubricants.
+- [x] Tiered coolants.
 - [x] Coolant being used during drilling.
 
 ### Refinement

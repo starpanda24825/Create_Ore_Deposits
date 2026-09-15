@@ -1,7 +1,23 @@
 {
   "values": {
     "#minecraft:water": {
-      "cooling_factor": 1.8
+      "cooling_factor": 0.5
+    },
+    "create_ore_deposits:cryobrine": {
+      "cooling_factor": 1.8,
+      "tier": 3
+    },
+    "create_ore_deposits:flowing_cryobrine": {
+      "cooling_factor": 1.8,
+      "tier": 3
+    },
+    "create_ore_deposits:flowing_frostbrine": {
+      "cooling_factor": 1.1,
+      "tier": 2
+    },
+    "create_ore_deposits:frostbrine": {
+      "cooling_factor": 1.1,
+      "tier": 2
     }
   }
 }

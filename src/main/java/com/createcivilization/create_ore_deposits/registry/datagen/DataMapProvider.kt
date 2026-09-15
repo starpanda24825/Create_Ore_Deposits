@@ -48,11 +48,19 @@ class DataMapProvider(
 			.add(CreateOreDepositsBlocks.NETHERITE_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(12, 5.0f, 4), false) // endgame
 
 		builder(CreateOreDepositsDataMaps.COOLING_FACTOR_DATA)
-			.add(FluidTags.WATER, CreateOreDepositsDataMaps.CoolingFactorData(1.8f), false)
+			.add(FluidTags.WATER, CreateOreDepositsDataMaps.CoolingFactorData(0.5f, 1), false)
+			.add(CreateOreDepositsFluids.FROSTBRINE.get().source.builtInRegistryHolder(), CreateOreDepositsDataMaps.CoolingFactorData(1.1f, 2), false)
+			.add(CreateOreDepositsFluids.FROSTBRINE.get().builtInRegistryHolder(), CreateOreDepositsDataMaps.CoolingFactorData(1.1f, 2), false)
+			.add(CreateOreDepositsFluids.CRYOBRINE.get().source.builtInRegistryHolder(), CreateOreDepositsDataMaps.CoolingFactorData(1.8f, 3), false)
+			.add(CreateOreDepositsFluids.CRYOBRINE.get().builtInRegistryHolder(), CreateOreDepositsDataMaps.CoolingFactorData(1.8f, 3), false)
 
 		builder(CreateOreDepositsDataMaps.LUBRICANT_FACTOR_DATA)
-			.add(CreateOreDepositsFluids.LUBRICANT.get().source.builtInRegistryHolder(), CreateOreDepositsDataMaps.LubricantFactorData(2.5f), false)
-			.add(CreateOreDepositsFluids.LUBRICANT.get().builtInRegistryHolder(), CreateOreDepositsDataMaps.LubricantFactorData(2.5f), false)
+			.add(CreateOreDepositsFluids.BEESWAX_GREASE.get().source.builtInRegistryHolder(), CreateOreDepositsDataMaps.LubricantFactorData(0.9f, 1), false)
+			.add(CreateOreDepositsFluids.BEESWAX_GREASE.get().builtInRegistryHolder(), CreateOreDepositsDataMaps.LubricantFactorData(0.9f, 1), false)
+			.add(CreateOreDepositsFluids.GEAR_OIL.get().source.builtInRegistryHolder(), CreateOreDepositsDataMaps.LubricantFactorData(1.6f, 2), false)
+			.add(CreateOreDepositsFluids.GEAR_OIL.get().builtInRegistryHolder(), CreateOreDepositsDataMaps.LubricantFactorData(1.6f, 2), false)
+			.add(CreateOreDepositsFluids.GRAPHITE_GREASE.get().source.builtInRegistryHolder(), CreateOreDepositsDataMaps.LubricantFactorData(2.5f, 3), false)
+			.add(CreateOreDepositsFluids.GRAPHITE_GREASE.get().builtInRegistryHolder(), CreateOreDepositsDataMaps.LubricantFactorData(2.5f, 3), false)
 
 		// Answer 6: tip tiers — mirrors the IRON/GOLD/STEEL/DIAMOND_TIP_TIER tags for redundancy
 		builder(CreateOreDepositsDataMaps.TIP_TIER_DATA)

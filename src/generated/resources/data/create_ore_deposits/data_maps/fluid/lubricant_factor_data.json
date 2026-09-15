@@ -1,10 +1,26 @@
 {
   "values": {
-    "create_ore_deposits:flowing_lubricant": {
-      "lube_factor": 2.5
+    "create_ore_deposits:beeswax_grease": {
+      "lube_factor": 0.9
     },
-    "create_ore_deposits:lubricant": {
-      "lube_factor": 2.5
+    "create_ore_deposits:flowing_beeswax_grease": {
+      "lube_factor": 0.9
+    },
+    "create_ore_deposits:flowing_gear_oil": {
+      "lube_factor": 1.6,
+      "tier": 2
+    },
+    "create_ore_deposits:flowing_graphite_grease": {
+      "lube_factor": 2.5,
+      "tier": 3
+    },
+    "create_ore_deposits:gear_oil": {
+      "lube_factor": 1.6,
+      "tier": 2
+    },
+    "create_ore_deposits:graphite_grease": {
+      "lube_factor": 2.5,
+      "tier": 3
     }
   }
 }

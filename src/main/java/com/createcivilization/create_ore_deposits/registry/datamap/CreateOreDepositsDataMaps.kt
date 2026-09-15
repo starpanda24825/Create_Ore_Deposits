@@ -29,21 +29,25 @@ object CreateOreDepositsDataMaps {
 		}
 	}
 
-	data class CoolingFactorData(val coolingFactor: Float) {
+	// tier is what the tooltips (and later Jade) read to say "Coolant Tier II". it defaults to 1 so
+	// a datapack can keep writing just the factor.
+	data class CoolingFactorData(val coolingFactor: Float, val tier: Int = 1) {
 		companion object {
 			val CODEC: Codec<CoolingFactorData> = RecordCodecBuilder.create { instance ->
 				instance.group(
-					Codec.FLOAT.fieldOf("cooling_factor").forGetter(CoolingFactorData::coolingFactor)
+					Codec.FLOAT.fieldOf("cooling_factor").forGetter(CoolingFactorData::coolingFactor),
+					Codec.INT.optionalFieldOf("tier", 1).forGetter(CoolingFactorData::tier)
 				).apply(instance, ::CoolingFactorData)
 			}
 		}
 	}
 
-	data class LubricantFactorData(val lubeFactor: Float) {
+	data class LubricantFactorData(val lubeFactor: Float, val tier: Int = 1) {
 		companion object {
 			val CODEC: Codec<LubricantFactorData> = RecordCodecBuilder.create { instance ->
 				instance.group(
-					Codec.FLOAT.fieldOf("lube_factor").forGetter(LubricantFactorData::lubeFactor)
+					Codec.FLOAT.fieldOf("lube_factor").forGetter(LubricantFactorData::lubeFactor),
+					Codec.INT.optionalFieldOf("tier", 1).forGetter(LubricantFactorData::tier)
 				).apply(instance, ::LubricantFactorData)
 			}
 		}

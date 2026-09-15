@@ -5,18 +5,69 @@ import com.createcivilization.create_ore_deposits.util.asResource
 
 import com.tterrag.registrate.util.entry.FluidEntry
 
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.level.material.Fluid
 import net.neoforged.neoforge.fluids.BaseFlowingFluid
 
 data object CreateOreDepositsFluids {
 
+private val ICE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath("minecraft", "block/ice")
+private val BLUE_ICE_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath("minecraft", "block/blue_ice")
+
+// COOLANTS
+
 	@JvmField
-	val LUBRICANT: FluidEntry<BaseFlowingFluid.Flowing> = CreateOreDeposits.REGISTRATE
-		.fluid("lubricant", "block/fluid/lubricant_still".asResource(), "block/fluid/lubricant_flow".asResource())
+	val FROSTBRINE: FluidEntry<BaseFlowingFluid.Flowing> = CreateOreDeposits.REGISTRATE
+		.fluid("frostbrine", ICE_TEXTURE, ICE_TEXTURE)
+		.properties { it.viscosity(1000).density(1000) }
+		.fluidProperties { it.levelDecreasePerBlock(2).tickRate(25).slopeFindDistance(3).explosionResistance(100f) }
+		.source(BaseFlowingFluid::Source)
+		.register()
+
+	@JvmField
+	val CRYOBRINE: FluidEntry<BaseFlowingFluid.Flowing> = CreateOreDeposits.REGISTRATE
+		.fluid("cryobrine", BLUE_ICE_TEXTURE, BLUE_ICE_TEXTURE)
+		.properties { it.viscosity(1000).density(1000) }
+		.fluidProperties { it.levelDecreasePerBlock(2).tickRate(25).slopeFindDistance(3).explosionResistance(100f) }
+		.source(BaseFlowingFluid::Source)
+		.register()
+
+// LUBRICANTS
+
+	@JvmField
+	val BEESWAX_GREASE: FluidEntry<BaseFlowingFluid.Flowing> = CreateOreDeposits.REGISTRATE
+		.fluid("beeswax_grease", "block/fluid/beeswax_grease_still".asResource(), "block/fluid/beeswax_grease_flow".asResource())
 		.properties { it.viscosity(1500).density(500) }
 		.fluidProperties { it.levelDecreasePerBlock(2).tickRate(25).slopeFindDistance(3).explosionResistance(100f) }
 		.source(BaseFlowingFluid::Source)
 		.register()
 
+	@JvmField
+	val GEAR_OIL: FluidEntry<BaseFlowingFluid.Flowing> = CreateOreDeposits.REGISTRATE
+		.fluid("gear_oil", "block/fluid/gear_oil_still".asResource(), "block/fluid/gear_oil_flow".asResource())
+		.properties { it.viscosity(1500).density(500) }
+		.fluidProperties { it.levelDecreasePerBlock(2).tickRate(25).slopeFindDistance(3).explosionResistance(100f) }
+		.source(BaseFlowingFluid::Source)
+		.register()
+
+	@JvmField
+	val GRAPHITE_GREASE: FluidEntry<BaseFlowingFluid.Flowing> = CreateOreDeposits.REGISTRATE
+		.fluid("graphite_grease", "block/fluid/graphite_grease_still".asResource(), "block/fluid/graphite_grease_flow".asResource())
+		.properties { it.viscosity(1500).density(500) }
+		.fluidProperties { it.levelDecreasePerBlock(2).tickRate(25).slopeFindDistance(3).explosionResistance(100f) }
+		.source(BaseFlowingFluid::Source)
+		.register()
+
+	@JvmField
+	val COOLANTS: List<FluidEntry<BaseFlowingFluid.Flowing>> = listOf(FROSTBRINE, CRYOBRINE)
+
+	@JvmField
+	val LUBRICANTS: List<FluidEntry<BaseFlowingFluid.Flowing>> = listOf(BEESWAX_GREASE, GEAR_OIL, GRAPHITE_GREASE)
+
+	fun fluidsOf(entries: List<FluidEntry<BaseFlowingFluid.Flowing>>): MutableSet<Fluid> =
+		entries.flatMapTo(mutableSetOf<Fluid>()) { listOf(it.get(), it.get().source) }
+
+// NON-TIERED FLUIDS
 	@JvmField
 	val SLAG: FluidEntry<BaseFlowingFluid.Flowing> = CreateOreDeposits.REGISTRATE
 		.fluid("slag", "block/fluid/slag_still".asResource(), "block/fluid/slag_flow".asResource())
