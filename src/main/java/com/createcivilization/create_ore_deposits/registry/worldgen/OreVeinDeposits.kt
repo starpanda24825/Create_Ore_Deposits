@@ -27,45 +27,48 @@ data object OreVeinDeposits {
 	)
 
 	@JvmField
-	val EXAMPLE_DEPOSIT: DepositVeinDefinition = deposit("example_deposit", CreateOreDepositsBlocks.EXAMPLE_DEPOSIT)
-
-	@JvmField
 	val COAL_ORE_DEPOSIT: DepositVeinDefinition = deposit("coal_ore_deposit", CreateOreDepositsBlocks.COAL_ORE_DEPOSIT)
 
 	@JvmField
-	val IRON_ORE_DEPOSIT: DepositVeinDefinition = deposit("iron_ore_deposit", CreateOreDepositsBlocks.IRON_ORE_DEPOSIT)
+	val IRON_ORE_DEPOSIT: DepositVeinDefinition = deposit(
+		"iron_ore_deposit", CreateOreDepositsBlocks.IRON_ORE_DEPOSIT, CreateOreDepositsBlocks.DEEPSLATE_IRON_ORE_DEPOSIT
+	)
 
 	@JvmField
-	val GOLD_ORE_DEPOSIT: DepositVeinDefinition = deposit("gold_ore_deposit", CreateOreDepositsBlocks.GOLD_ORE_DEPOSIT)
+	val GOLD_ORE_DEPOSIT: DepositVeinDefinition = deposit(
+		"gold_ore_deposit", CreateOreDepositsBlocks.GOLD_ORE_DEPOSIT, CreateOreDepositsBlocks.DEEPSLATE_GOLD_ORE_DEPOSIT
+	)
 
 	@JvmField
-	val COPPER_ORE_DEPOSIT: DepositVeinDefinition = deposit("copper_ore_deposit", CreateOreDepositsBlocks.COPPER_ORE_DEPOSIT)
+	val COPPER_ORE_DEPOSIT: DepositVeinDefinition = deposit(
+		"copper_ore_deposit", CreateOreDepositsBlocks.COPPER_ORE_DEPOSIT, CreateOreDepositsBlocks.DEEPSLATE_COPPER_ORE_DEPOSIT
+	)
 
 	@JvmField
-	val LAPIS_ORE_DEPOSIT: DepositVeinDefinition = deposit("lapis_ore_deposit", CreateOreDepositsBlocks.LAPIS_ORE_DEPOSIT)
+	val LAPIS_ORE_DEPOSIT: DepositVeinDefinition = deposit(
+		"lapis_ore_deposit", CreateOreDepositsBlocks.LAPIS_ORE_DEPOSIT, CreateOreDepositsBlocks.DEEPSLATE_LAPIS_ORE_DEPOSIT
+	)
 
 	@JvmField
-	val DIAMOND_ORE_DEPOSIT: DepositVeinDefinition = deposit("diamond_ore_deposit", CreateOreDepositsBlocks.DIAMOND_ORE_DEPOSIT)
+	val REDSTONE_ORE_DEPOSIT: DepositVeinDefinition = deposit(
+		"redstone_ore_deposit", CreateOreDepositsBlocks.REDSTONE_ORE_DEPOSIT, CreateOreDepositsBlocks.DEEPSLATE_REDSTONE_ORE_DEPOSIT
+	)
 
 	@JvmField
-	val EMERALD_ORE_DEPOSIT: DepositVeinDefinition = deposit("emerald_ore_deposit", CreateOreDepositsBlocks.EMERALD_ORE_DEPOSIT)
-
-	@JvmField
-	val QUARTZ_ORE_DEPOSIT: DepositVeinDefinition = deposit("quartz_ore_deposit", CreateOreDepositsBlocks.QUARTZ_ORE_DEPOSIT)
+	val QUARTZ_ORE_DEPOSIT: DepositVeinDefinition = deposit(
+		"quartz_ore_deposit", CreateOreDepositsBlocks.QUARTZ_ORE_DEPOSIT, CreateOreDepositsBlocks.DEEPSLATE_QUARTZ_ORE_DEPOSIT
+	)
 
 	@JvmField
 	val NETHERITE_ORE_DEPOSIT: DepositVeinDefinition = deposit("netherite_ore_deposit", CreateOreDepositsBlocks.NETHERITE_ORE_DEPOSIT)
 
-	@JvmField
-	val DEPOSITS: List<DepositVeinDefinition> = listOf(
-		EXAMPLE_DEPOSIT,
+	@JvmField		val DEPOSITS: List<DepositVeinDefinition> = listOf(
 		COAL_ORE_DEPOSIT,
 		IRON_ORE_DEPOSIT,
 		GOLD_ORE_DEPOSIT,
 		COPPER_ORE_DEPOSIT,
 		LAPIS_ORE_DEPOSIT,
-		DIAMOND_ORE_DEPOSIT,
-		EMERALD_ORE_DEPOSIT,
+		REDSTONE_ORE_DEPOSIT,
 		QUARTZ_ORE_DEPOSIT,
 		NETHERITE_ORE_DEPOSIT
 	)
@@ -79,9 +82,11 @@ data object OreVeinDeposits {
 
 	private fun deposit(
 		name: String,
-		block: BlockEntry<Block>
+		block: BlockEntry<Block>,
+		deepslateBlock: BlockEntry<Block>? = null
 	): DepositVeinDefinition {
 		val defaultState = block.defaultState
+		val deepslateState = deepslateBlock?.defaultState ?: defaultState
 		val blockHash = BuiltInRegistries.BLOCK.getKey(block.get()).toString().hashCode().toLong()
 		val depositTargets = listOf(
 			OreConfiguration.target(
@@ -90,7 +95,7 @@ data object OreVeinDeposits {
 			),
 			OreConfiguration.target(
 				TagMatchTest(BlockTags.DEEPSLATE_ORE_REPLACEABLES),
-				defaultState
+				deepslateState
 			)
 		)
 

@@ -242,27 +242,23 @@ data object Config {
 				.define("enableRegionFamilyGate", true)
 			inline val enableRegionFamilyGate: Boolean get() = _enableRegionFamilyGate.get()
 
-			val EXAMPLE_DEPOSIT: Deposit = deposit(builder, "example_deposit", ironDefaults())
 			val COAL_ORE_DEPOSIT: Deposit = deposit(builder, "coal_ore_deposit", coalDefaults())
 			val IRON_ORE_DEPOSIT: Deposit = deposit(builder, "iron_ore_deposit", ironDefaults())
 			val GOLD_ORE_DEPOSIT: Deposit = deposit(builder, "gold_ore_deposit", goldDefaults())
 			val COPPER_ORE_DEPOSIT: Deposit = deposit(builder, "copper_ore_deposit", copperDefaults())
 			val LAPIS_ORE_DEPOSIT: Deposit = deposit(builder, "lapis_ore_deposit", lapisDefaults())
-			val DIAMOND_ORE_DEPOSIT: Deposit = deposit(builder, "diamond_ore_deposit", diamondDefaults())
-			val EMERALD_ORE_DEPOSIT: Deposit = deposit(builder, "emerald_ore_deposit", emeraldDefaults())
+			val REDSTONE_ORE_DEPOSIT: Deposit = deposit(builder, "redstone_ore_deposit", redstoneDefaults())
 			val QUARTZ_ORE_DEPOSIT: Deposit = deposit(builder, "quartz_ore_deposit", quartzDefaults())
 			val NETHERITE_ORE_DEPOSIT: Deposit = deposit(builder, "netherite_ore_deposit", netheriteDefaults())
 
 			private val DEPOSITS_BY_BLOCK: Map<Block, Deposit> by lazy {
 				mapOf(
-					CreateOreDepositsBlocks.EXAMPLE_DEPOSIT.get() to EXAMPLE_DEPOSIT,
 					CreateOreDepositsBlocks.COAL_ORE_DEPOSIT.get() to COAL_ORE_DEPOSIT,
 					CreateOreDepositsBlocks.IRON_ORE_DEPOSIT.get() to IRON_ORE_DEPOSIT,
 					CreateOreDepositsBlocks.GOLD_ORE_DEPOSIT.get() to GOLD_ORE_DEPOSIT,
 					CreateOreDepositsBlocks.COPPER_ORE_DEPOSIT.get() to COPPER_ORE_DEPOSIT,
 					CreateOreDepositsBlocks.LAPIS_ORE_DEPOSIT.get() to LAPIS_ORE_DEPOSIT,
-					CreateOreDepositsBlocks.DIAMOND_ORE_DEPOSIT.get() to DIAMOND_ORE_DEPOSIT,
-					CreateOreDepositsBlocks.EMERALD_ORE_DEPOSIT.get() to EMERALD_ORE_DEPOSIT,
+					CreateOreDepositsBlocks.REDSTONE_ORE_DEPOSIT.get() to REDSTONE_ORE_DEPOSIT,
 					CreateOreDepositsBlocks.QUARTZ_ORE_DEPOSIT.get() to QUARTZ_ORE_DEPOSIT,
 					CreateOreDepositsBlocks.NETHERITE_ORE_DEPOSIT.get() to NETHERITE_ORE_DEPOSIT
 				)
@@ -311,6 +307,7 @@ data object Config {
 // exists at all in this area". easy to mix these two up, I did it myself at least twice.
 
 			data class TierDefaults(
+				val depositSize: Int,
 				val averageChunksPerCluster: Int,
 				val minY: Int,
 				val maxY: Int,
@@ -321,6 +318,17 @@ data object Config {
 			)
 
 			class Tier(builder: ModConfigSpec.Builder, defaults: TierDefaults) {
+
+				@PublishedApi
+				internal val _depositSize: ModConfigSpec.IntValue = builder
+					.comment(
+						"How big ONE deposit lobe is, as a width in blocks (radius = value / 2).",
+						"12 is a blob about 12 blocks across, 32 is Create's own deposit size.",
+						"Together with the lobe counts and the loot table this decides how much ore a vein holds."
+					)
+					.worldRestart()
+					.defineInRange("depositSize", defaults.depositSize, 1, 64) // vein volume
+				inline val depositSize: Int get() = _depositSize.get()
 
 				@PublishedApi
 				internal val _biomeSelectors: ModConfigSpec.ConfigValue<List<out String>> = builder
@@ -390,70 +398,72 @@ data object Config {
 			}
 
 			private fun tierDefaults(
-				averageChunksPerCluster: Int,
-				minY: Int,
-				maxY: Int,
-				minDepositsPerCluster: Int,
-				maxDepositsPerCluster: Int,
-				chunksBetweenDeposits: Int,
+				size: Int,        // lobe volume
+				rarity: Int,      // cluster rarity
+				y: IntRange,      // spawn height
+				lobes: IntRange,  // lobes per cluster
+				spread: Int,      // chunk spacing
 				biomeSelectors: List<String> = listOf("#minecraft:is_overworld")
 			): TierDefaults = TierDefaults(
-				averageChunksPerCluster = averageChunksPerCluster,
-				minY = minY,
-				maxY = maxY,
-				minDepositsPerCluster = minDepositsPerCluster,
-				maxDepositsPerCluster = maxDepositsPerCluster,
-				chunksBetweenDeposits = chunksBetweenDeposits,
+				depositSize = size,
+				averageChunksPerCluster = rarity,
+				minY = y.first,
+				maxY = y.last,
+				minDepositsPerCluster = lobes.first,
+				maxDepositsPerCluster = lobes.last,
+				chunksBetweenDeposits = spread,
 				biomeSelectors = biomeSelectors
 			)
 
-			private fun uniformRangeDefaults(minY: Int, maxY: Int): DepositDefaults = DepositDefaults(
-				large = tierDefaults(2048, minY, maxY, 6, 9, 2),
-				medium = tierDefaults(768, minY, maxY, 3, 5, 2),
-				small = tierDefaults(256, minY, maxY, 1, 2, 1)
-			)
 
 			private fun coalDefaults(): DepositDefaults = DepositDefaults(
-				large = tierDefaults(2048, 136, 320, 6, 9, 2),
-				medium = tierDefaults(768, 0, 192, 3, 5, 2),
-				small = tierDefaults(256, 0, 192, 1, 2, 1)
+				small = tierDefaults(size = 8, rarity = 2500, y = 0..192, lobes = 1..2, spread = 1),
+				medium = tierDefaults(size = 10, rarity = 5000, y = 0..192, lobes = 3..5, spread = 2),
+				large = tierDefaults(size = 12, rarity = 7500, y = 136..320, lobes = 6..9, spread = 2)
 			)
 
 			private fun ironDefaults(): DepositDefaults = DepositDefaults(
-				large = tierDefaults(2048, 80, 384, 6, 9, 2),
-				medium = tierDefaults(768, -24, 56, 3, 5, 2),
-				small = tierDefaults(256, -64, 72, 1, 2, 1)
+				small = tierDefaults(size = 8, rarity = 2500, y = -64..72, lobes = 1..2, spread = 1),
+				medium = tierDefaults(size = 11, rarity = 5000, y = -24..56, lobes = 3..5, spread = 2),
+				large = tierDefaults(size = 13, rarity = 7500, y = 80..384, lobes = 6..9, spread = 2)
+			)
+
+			private fun copperDefaults(): DepositDefaults = DepositDefaults(
+				small = tierDefaults(size = 7, rarity = 2500, y = -16..112, lobes = 1..2, spread = 1),
+				medium = tierDefaults(size = 10, rarity = 5000, y = -16..112, lobes = 3..5, spread = 2),
+				large = tierDefaults(size = 17, rarity = 7500, y = -16..112, lobes = 6..9, spread = 2)
+			)
+
+
+			private fun quartzDefaults(): DepositDefaults = DepositDefaults(
+				small = tierDefaults(size = 6, rarity = 2500, y = -84..300, lobes = 1..2, spread = 1),
+				medium = tierDefaults(size = 8, rarity = 5000, y = -84..300, lobes = 2..4, spread = 2),
+				large = tierDefaults(size = 10, rarity = 7500, y = -84..300, lobes = 4..6, spread = 2)
+			)
+
+			private fun lapisDefaults(): DepositDefaults = DepositDefaults(
+				small = tierDefaults(size = 6, rarity = 2500, y = -64..64, lobes = 1..2, spread = 1),
+				medium = tierDefaults(size = 8, rarity = 5000, y = -32..32, lobes = 2..4, spread = 2),
+				large = tierDefaults(size = 10, rarity = 7500, y = -64..64, lobes = 4..6, spread = 2)
+			)
+
+			private fun redstoneDefaults(): DepositDefaults = DepositDefaults(
+				small = tierDefaults(size = 8, rarity = 2500, y = -64..15, lobes = 1..2, spread = 1),
+				medium = tierDefaults(size = 10, rarity = 5000, y = -64..15, lobes = 3..5, spread = 2),
+				large = tierDefaults(size = 12, rarity = 7500, y = -64..15, lobes = 6..9, spread = 2)
 			)
 
 			private fun goldDefaults(): DepositDefaults = DepositDefaults(
-				large = tierDefaults(2048, -64, 32, 6, 9, 2),
-				medium = tierDefaults(768, -64, 32, 3, 5, 2),
-				small = tierDefaults(256, -64, -48, 1, 2, 1)
+				small = tierDefaults(size = 5, rarity = 5000, y = -64..-48, lobes = 1..2, spread = 1),
+				medium = tierDefaults(size = 7, rarity = 7500, y = -64..32, lobes = 2..3, spread = 2),
+				large = tierDefaults(size = 9, rarity = 12500, y = -64..32, lobes = 3..4, spread = 2)
 			)
 
-			private fun copperDefaults(): DepositDefaults = uniformRangeDefaults(-16, 112)
-
-			private fun lapisDefaults(): DepositDefaults = DepositDefaults(
-				large = tierDefaults(2048, -64, 64, 6, 9, 2),
-				medium = tierDefaults(768, -32, 32, 3, 5, 2),
-				small = tierDefaults(256, -64, 64, 1, 2, 1)
+			private fun netheriteDefaults(): DepositDefaults = DepositDefaults(
+				small = tierDefaults(size = 3, rarity = 30000, y = -64..16, lobes = 1..1, spread = 1),
+				medium = tierDefaults(size = 5, rarity = 60000, y = -64..-4, lobes = 1..1, spread = 1),
+				large = tierDefaults(size = 6, rarity = 120000, y = -64..16, lobes = 1..1, spread = 1)
 			)
-
-			private fun diamondDefaults(): DepositDefaults = DepositDefaults(
-				large = tierDefaults(2048, -64, 16, 6, 9, 2),
-				medium = tierDefaults(768, -64, -4, 3, 5, 2),
-				small = tierDefaults(256, -64, 16, 1, 2, 1)
-			)
-
-			private fun emeraldDefaults(): DepositDefaults = uniformRangeDefaults(-16, 480)
-
-			private fun quartzDefaults(): DepositDefaults = uniformRangeDefaults(10, 310)
-
-			private fun netheriteDefaults(): DepositDefaults {
-// overworld only mod, so netherite reuses diamond's Y range instead of ancient debris's real (nether) range.
-// don't "fix" this back to nether Y values, it's on purpose.
-				return diamondDefaults()
-			}
 		}
 	}
 

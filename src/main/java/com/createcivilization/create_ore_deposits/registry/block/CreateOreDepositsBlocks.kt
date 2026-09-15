@@ -88,33 +88,47 @@ data object CreateOreDepositsBlocks {
 	// maxAttempts / hardness live in DataMapProvider.kt (DEPOSIT_DATA).
 
 
-	val EXAMPLE_DEPOSIT: BlockEntry<Block> = registerDepositGuaranteed("example_deposit", Blocks.STONE, Items.NETHERITE_BLOCK) // dev block
 
 	val COAL_ORE_DEPOSIT: BlockEntry<Block> = registerDeposit(
 		"coal_ore_deposit", Blocks.COAL_ORE, CreateOreDepositsItems.UNREFINED_COAL_ORE,
-		3f, 0.60f, 1) // bulk fuel, three rolls
+		3f, 0.60f, 1) // bulk fuel, three rolls; one block for both stone and deepslate levels
 	val IRON_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
 		"iron_ore_deposit", Blocks.IRON_ORE, CreateOreDepositsItems.UNREFINED_IRON_ORE,
 		0.75f, 2) // core metal, two each
+	val DEEPSLATE_IRON_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"deepslate_iron_ore_deposit", Blocks.DEEPSLATE_IRON_ORE, CreateOreDepositsItems.UNREFINED_IRON_ORE,
+		0.75f, 2, false, CreateOreDepositsTags.NEEDS_GOLD_TIP) // same yield as iron, one tier up
 	val COPPER_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
 		"copper_ore_deposit", Blocks.COPPER_ORE, CreateOreDepositsItems.UNREFINED_COPPER_ORE,
 		0.70f, 2) // early metal, two each
+	val DEEPSLATE_COPPER_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"deepslate_copper_ore_deposit", Blocks.DEEPSLATE_COPPER_ORE, CreateOreDepositsItems.UNREFINED_COPPER_ORE,
+		0.70f, 2, false, CreateOreDepositsTags.NEEDS_GOLD_TIP) // same yield as copper, one tier up
 	val QUARTZ_ORE_DEPOSIT: BlockEntry<Block> = registerDeposit(
 		"quartz_ore_deposit", Blocks.NETHER_QUARTZ_ORE, CreateOreDepositsItems.UNREFINED_QUARTZ_ORE,
 		1f, 0.50f, 2) // utility, two each
+// vanilla has no deepslate quartz, so plain deepslate is the closest stand-in for its twin
+	val DEEPSLATE_QUARTZ_ORE_DEPOSIT: BlockEntry<Block> = registerDeposit(
+		"deepslate_quartz_ore_deposit", Blocks.DEEPSLATE, CreateOreDepositsItems.UNREFINED_QUARTZ_ORE,
+		1f, 0.50f, 2, false, CreateOreDepositsTags.NEEDS_GOLD_TIP) // same yield as quartz, one tier up
 	val LAPIS_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
 		"lapis_ore_deposit", Blocks.LAPIS_ORE, CreateOreDepositsItems.UNREFINED_LAPIS_ORE,
 		0.65f, 1) // utility, single
-//	val REDSTONE_ORE_DEPOSIT: BlockEntry<Block> = registerDeposit("redstone_ore_deposit", Blocks.REDSTONE_ORE, Items.REDSTONE_ORE)
+	val DEEPSLATE_LAPIS_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"deepslate_lapis_ore_deposit", Blocks.DEEPSLATE_LAPIS_ORE, CreateOreDepositsItems.UNREFINED_LAPIS_ORE,
+		0.65f, 1, false, CreateOreDepositsTags.NEEDS_GOLD_TIP) 
+	val REDSTONE_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"redstone_ore_deposit", Blocks.IRON_ORE, Items.REDSTONE,
+		0.75f, 2) // plain dust for now, no processing branch yet
+	val DEEPSLATE_REDSTONE_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"deepslate_redstone_ore_deposit", Blocks.DEEPSLATE_IRON_ORE, Items.REDSTONE,
+		0.75f, 2, false, CreateOreDepositsTags.NEEDS_GOLD_TIP) // same yield as redstone, one tier up
 	val GOLD_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
 		"gold_ore_deposit", Blocks.GOLD_ORE, CreateOreDepositsItems.UNREFINED_GOLD_ORE,
 		0.50f, 1, false, CreateOreDepositsTags.NEEDS_GOLD_TIP) // tier 2 metal
-	val DIAMOND_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
-		"diamond_ore_deposit", Blocks.DIAMOND_ORE, CreateOreDepositsItems.UNREFINED_DIAMOND_ORE,
-		0.06f, 3, false, CreateOreDepositsTags.NEEDS_STEEL_TIP) // rare, three each
-	val EMERALD_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
-		"emerald_ore_deposit", Blocks.EMERALD_ORE, CreateOreDepositsItems.UNREFINED_EMERALD_ORE,
-		0.05f, 2, false, CreateOreDepositsTags.NEEDS_STEEL_TIP) // rare, two each
+	val DEEPSLATE_GOLD_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
+		"deepslate_gold_ore_deposit", Blocks.DEEPSLATE_GOLD_ORE, CreateOreDepositsItems.UNREFINED_GOLD_ORE,
+		0.50f, 1, false, CreateOreDepositsTags.NEEDS_STEEL_TIP) // same yield as gold, steel tip only gains deepslate
 	val NETHERITE_ORE_DEPOSIT: BlockEntry<Block> = registerDepositSingleRoll(
 		"netherite_ore_deposit", Blocks.ANCIENT_DEBRIS, Items.ANCIENT_DEBRIS,
 		0.07f, 1, true, CreateOreDepositsTags.NEEDS_DIAMOND_TIP)
@@ -128,14 +142,6 @@ data object CreateOreDepositsBlocks {
 		}
 		.simpleItem()
 		.register()
-
-	fun registerDepositGuaranteed(
-		blockName: String,
-		block: Block,
-		ore: ItemLike,
-		isRotatedPillar: Boolean = false,
-		vararg requiredTipTags: TagKey<Block>
-	): BlockEntry<Block> = registerDepositSingleRoll(blockName, block, ore, 1f, 1, isRotatedPillar, *requiredTipTags)
 
 	fun registerDepositSingleRoll(
 		blockName: String,

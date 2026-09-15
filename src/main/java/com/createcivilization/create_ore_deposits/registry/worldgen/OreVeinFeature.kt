@@ -35,9 +35,10 @@ import kotlin.math.sqrt
  * noise pass before placing the chosen layer block. I want to keep that single-deposit shape and
  * only change the outer cluster behavior so one rare origin can place several Create-style deposits.
  *
- * The size stays fixed at Create's `LayeredOreConfiguration(..., 32, 0)` default instead of becoming
- * another config value. Cluster count and spacing are already configurable here, and keeping size fixed
- * avoids adding a third tuning axis when the goal is to stay visually close to Create's own deposits.
+ * The lobe size is no longer fixed at Create's `LayeredOreConfiguration(..., 32, 0)` default. Each
+ * ore+tier now reads its own `depositSize` from Config at placement time, which is what lets a large
+ * netherite vein be small while a large iron vein stays huge. Cluster count, spread and rarity are
+ * all config driven, so worldgen stays fully tunable without touching generated data.
  */
 class OreVeinFeature : Feature<OreVeinConfiguration>(OreVeinConfiguration.CODEC) {
 
@@ -53,7 +54,7 @@ class OreVeinFeature : Feature<OreVeinConfiguration>(OreVeinConfiguration.CODEC)
 		var placedDeposits = 0
 
 		clusterOrigins.forEach { depositOrigin ->
-			if (placeLayeredDeposit(context.level(), depositOrigin, deposit.layerPatterns, random)) {
+			if (placeLayeredDeposit(context.level(), depositOrigin, deposit.layerPatterns, tierConfig.depositSize, random)) {
 				placedDeposits++
 			}
 		}
@@ -200,13 +201,15 @@ class OreVeinFeature : Feature<OreVeinConfiguration>(OreVeinConfiguration.CODEC)
 		level: WorldGenLevel,
 		origin: BlockPos,
 		patternPool: List<LayeredDepositPattern>,
+		depositSize: Int,
 		random: RandomSource
 	): Boolean {
 		if (patternPool.isEmpty()) {
 			return false
 		}
 
-		val radius = LAYERED_DEPOSIT_SIZE * 0.5f
+		val radius = depositSize * 0.5f
+		val resolvedLayerSize = depositSize + 1
 		val radiusBound = Mth.ceil(radius) - 1
 		if (!areTouchedChunksAccessible(level, origin, radiusBound)) {
 			return false
@@ -217,7 +220,7 @@ class OreVeinFeature : Feature<OreVeinConfiguration>(OreVeinConfiguration.CODEC)
 		}
 
 		val layerPattern = patternPool[random.nextInt(patternPool.size)]
-		val resolvedLayers = resolveLayers(layerPattern, random)
+		val resolvedLayers = resolveLayers(layerPattern, resolvedLayerSize, random)
 		if (resolvedLayers.isEmpty()) {
 			return false
 		}
@@ -257,7 +260,7 @@ class OreVeinFeature : Feature<OreVeinConfiguration>(OreVeinConfiguration.CODEC)
 							currentX * LAYER_NOISE_FREQUENCY.toDouble(),
 							currentY * LAYER_NOISE_FREQUENCY.toDouble(),
 							currentZ * LAYER_NOISE_FREQUENCY.toDouble()
-						).toFloat() * (MAX_LAYER_DISPLACEMENT / RESOLVED_LAYER_SIZE)
+						).toFloat() * (MAX_LAYER_DISPLACEMENT / resolvedLayerSize)
 
 						val layerEntry = selectLayerEntry(resolvedLayers, rampValue)
 						if (distanceSquared > layerEntry.radialThresholdMultiplier) {
@@ -345,13 +348,14 @@ class OreVeinFeature : Feature<OreVeinConfiguration>(OreVeinConfiguration.CODEC)
 
 	private fun resolveLayers(
 		layerPattern: LayeredDepositPattern,
+		resolvedLayerSize: Int,
 		random: RandomSource
 	): List<ResolvedLayerEntry> {
 		val temporaryLayers = ArrayList<TemporaryLayerEntry>()
 		var layerSizeTotal = 0.0f
 		var currentLayer: LayeredDepositPattern.Layer? = null
 
-		while (layerSizeTotal < RESOLVED_LAYER_SIZE) {
+		while (layerSizeTotal < resolvedLayerSize) {
 			val nextLayer = layerPattern.rollNext(currentLayer, random)
 			val layerSize = Mth.randomBetween(random, nextLayer.minSize.toFloat(), nextLayer.maxSize.toFloat())
 			temporaryLayers += TemporaryLayerEntry(nextLayer, layerSize)
@@ -360,13 +364,13 @@ class OreVeinFeature : Feature<OreVeinConfiguration>(OreVeinConfiguration.CODEC)
 		}
 
 		val resolvedLayers = ArrayList<ResolvedLayerEntry>(temporaryLayers.size)
-		var cumulativeLayerSize = -(layerSizeTotal - RESOLVED_LAYER_SIZE) * random.nextFloat()
+		var cumulativeLayerSize = -(layerSizeTotal - resolvedLayerSize) * random.nextFloat()
 
 		temporaryLayers.forEach { temporaryLayer ->
 			val rampStartValue = if (resolvedLayers.isEmpty()) {
 				Float.NEGATIVE_INFINITY
 			} else {
-				cumulativeLayerSize * (2.0f / RESOLVED_LAYER_SIZE) - 1.0f
+				cumulativeLayerSize * (2.0f / resolvedLayerSize) - 1.0f
 			}
 
 			cumulativeLayerSize += temporaryLayer.size
@@ -474,9 +478,7 @@ class OreVeinFeature : Feature<OreVeinConfiguration>(OreVeinConfiguration.CODEC)
 	)
 
 	companion object {
-		private const val LAYERED_DEPOSIT_SIZE = 32
 		private const val DISCARD_CHANCE_ON_AIR_EXPOSURE = 0.0f
-		private const val RESOLVED_LAYER_SIZE = LAYERED_DEPOSIT_SIZE + 1
 		private const val MAX_LAYER_DISPLACEMENT = 1.75f
 		private const val LAYER_NOISE_FREQUENCY = 0.125f
 		private const val MAX_RADIAL_THRESHOLD_REDUCTION = 0.25f

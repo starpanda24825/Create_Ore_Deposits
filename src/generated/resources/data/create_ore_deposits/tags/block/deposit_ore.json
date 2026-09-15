@@ -1,14 +1,18 @@
 {
   "values": [
-    "create_ore_deposits:example_deposit",
     "create_ore_deposits:coal_ore_deposit",
     "create_ore_deposits:iron_ore_deposit",
+    "create_ore_deposits:deepslate_iron_ore_deposit",
     "create_ore_deposits:copper_ore_deposit",
+    "create_ore_deposits:deepslate_copper_ore_deposit",
     "create_ore_deposits:quartz_ore_deposit",
+    "create_ore_deposits:deepslate_quartz_ore_deposit",
     "create_ore_deposits:lapis_ore_deposit",
+    "create_ore_deposits:deepslate_lapis_ore_deposit",
+    "create_ore_deposits:redstone_ore_deposit",
+    "create_ore_deposits:deepslate_redstone_ore_deposit",
     "create_ore_deposits:gold_ore_deposit",
-    "create_ore_deposits:diamond_ore_deposit",
-    "create_ore_deposits:emerald_ore_deposit",
+    "create_ore_deposits:deepslate_gold_ore_deposit",
     "create_ore_deposits:netherite_ore_deposit"
   ]
 }

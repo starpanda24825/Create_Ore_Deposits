@@ -8,19 +8,35 @@
       "hardness": 1.4,
       "max_attempts": 6
     },
-    "create_ore_deposits:diamond_ore_deposit": {
-      "hardness": 3.4,
-      "max_attempts": 10,
+    "create_ore_deposits:deepslate_copper_ore_deposit": {
+      "hardness": 1.4,
+      "max_attempts": 6,
+      "required_tier": 2
+    },
+    "create_ore_deposits:deepslate_gold_ore_deposit": {
+      "hardness": 2.6,
+      "max_attempts": 6,
       "required_tier": 3
     },
-    "create_ore_deposits:emerald_ore_deposit": {
-      "hardness": 3.0,
+    "create_ore_deposits:deepslate_iron_ore_deposit": {
+      "hardness": 1.8,
       "max_attempts": 8,
-      "required_tier": 3
+      "required_tier": 2
     },
-    "create_ore_deposits:example_deposit": {
-      "hardness": 1.0,
-      "max_attempts": 20
+    "create_ore_deposits:deepslate_lapis_ore_deposit": {
+      "hardness": 1.6,
+      "max_attempts": 6,
+      "required_tier": 2
+    },
+    "create_ore_deposits:deepslate_quartz_ore_deposit": {
+      "hardness": 1.5,
+      "max_attempts": 6,
+      "required_tier": 2
+    },
+    "create_ore_deposits:deepslate_redstone_ore_deposit": {
+      "hardness": 1.4,
+      "max_attempts": 6,
+      "required_tier": 2
     },
     "create_ore_deposits:gold_ore_deposit": {
       "hardness": 2.6,
@@ -42,6 +58,10 @@
     },
     "create_ore_deposits:quartz_ore_deposit": {
       "hardness": 1.5,
+      "max_attempts": 6
+    },
+    "create_ore_deposits:redstone_ore_deposit": {
+      "hardness": 1.4,
       "max_attempts": 6
     }
   }

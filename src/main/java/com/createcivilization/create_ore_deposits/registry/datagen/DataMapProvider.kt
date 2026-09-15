@@ -32,15 +32,19 @@ class DataMapProvider(
 
 		builder(CreateOreDepositsDataMaps.DEPOSIT_DATA)
 			//                          maxAtt  hardness  tier
-			.add(CreateOreDepositsBlocks.EXAMPLE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(20, 1.0f, 1), false) // dev block
 			.add(CreateOreDepositsBlocks.COAL_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.2f, 1), false) // bulk fuel
 			.add(CreateOreDepositsBlocks.IRON_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(8, 1.8f, 1), false) // core metal
+			.add(CreateOreDepositsBlocks.DEEPSLATE_IRON_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(8, 1.8f, 2), false) // iron's deepslate twin, one tier up
 			.add(CreateOreDepositsBlocks.COPPER_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.4f, 1), false) // early metal
+			.add(CreateOreDepositsBlocks.DEEPSLATE_COPPER_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.4f, 2), false) // copper's deepslate twin, one tier up
 			.add(CreateOreDepositsBlocks.QUARTZ_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.5f, 1), false) // utility
+			.add(CreateOreDepositsBlocks.DEEPSLATE_QUARTZ_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.5f, 2), false) // quartz's deepslate twin, one tier up
 			.add(CreateOreDepositsBlocks.LAPIS_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.6f, 1), false) // utility
+			.add(CreateOreDepositsBlocks.DEEPSLATE_LAPIS_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.6f, 2), false) // lapis' deepslate twin, one tier up
+			.add(CreateOreDepositsBlocks.REDSTONE_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.4f, 1), false) // utility, plain dust loot for now
+			.add(CreateOreDepositsBlocks.DEEPSLATE_REDSTONE_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 1.4f, 2), false) // redstone's deepslate twin, one tier up
 			.add(CreateOreDepositsBlocks.GOLD_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 2.6f, 2), false) // tier 2 metal
-			.add(CreateOreDepositsBlocks.DIAMOND_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(10, 3.4f, 3), false) // rare
-			.add(CreateOreDepositsBlocks.EMERALD_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(8, 3.0f, 3), false) // rare
+			.add(CreateOreDepositsBlocks.DEEPSLATE_GOLD_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(6, 2.6f, 3), false) // gold's deepslate twin, the steel tip's only job
 			.add(CreateOreDepositsBlocks.NETHERITE_ORE_DEPOSIT, CreateOreDepositsDataMaps.DepositData(12, 5.0f, 4), false) // endgame
 
 		builder(CreateOreDepositsDataMaps.COOLING_FACTOR_DATA)

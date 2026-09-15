@@ -1,0 +1,7 @@
+{
+	"variants": {
+		"": {
+			"model": "create_ore_deposits:block/deposits/deepslate_quartz_ore_deposit"
+		}
+	}
+}

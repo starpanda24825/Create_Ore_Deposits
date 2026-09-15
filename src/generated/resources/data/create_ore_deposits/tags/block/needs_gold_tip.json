@@ -1,5 +1,10 @@
 {
   "values": [
+    "create_ore_deposits:deepslate_iron_ore_deposit",
+    "create_ore_deposits:deepslate_copper_ore_deposit",
+    "create_ore_deposits:deepslate_quartz_ore_deposit",
+    "create_ore_deposits:deepslate_lapis_ore_deposit",
+    "create_ore_deposits:deepslate_redstone_ore_deposit",
     "create_ore_deposits:gold_ore_deposit"
   ]
 }

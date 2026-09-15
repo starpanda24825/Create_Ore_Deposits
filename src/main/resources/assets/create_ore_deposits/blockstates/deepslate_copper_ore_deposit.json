@@ -1,0 +1,7 @@
+{
+	"variants": {
+		"": {
+			"model": "create_ore_deposits:block/deposits/deepslate_copper_ore_deposit"
+		}
+	}
+}

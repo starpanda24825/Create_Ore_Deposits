@@ -16,7 +16,7 @@
       },
       {
         "state": {
-          "Name": "create_ore_deposits:gold_ore_deposit"
+          "Name": "create_ore_deposits:deepslate_gold_ore_deposit"
         },
         "target": {
           "predicate_type": "minecraft:tag_match",

@@ -16,7 +16,7 @@
       },
       {
         "state": {
-          "Name": "create_ore_deposits:copper_ore_deposit"
+          "Name": "create_ore_deposits:deepslate_copper_ore_deposit"
         },
         "target": {
           "predicate_type": "minecraft:tag_match",
